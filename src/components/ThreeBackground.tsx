@@ -53,7 +53,26 @@ type ExternalPreset =
   | 'liquidBars'
   | 'auroraBlur'
   | 'liquidLines'
-  | 'squircleShift';
+  | 'squircleShift'
+  | 'grainWave'
+  | 'glassFlow'
+  | 'shadowBars'
+  | 'warpTwister'
+  | 'blackHole'
+  | 'blurredRays'
+  | 'flamePaths'
+  | 'gradientBars'
+  | 'halftoneWave'
+  | 'metallicSwirl'
+  | 'metallicSwirlGold'
+  | 'retroLines'
+  | 'rubberFluid'
+  | 'squareMatrix'
+  | 'swirlBlend'
+  | 'asciiTiles'
+  | 'twilightLines'
+  | 'chromaBlinds'
+  | 'glassTiles';
 type ShaderPreset = Exclude<AnimatedBgPreset, ObjectPreset | ExternalPreset>;
 
 const MODE: Record<ShaderPreset, number> = {

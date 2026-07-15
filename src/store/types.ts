@@ -39,6 +39,7 @@ export interface LibrarySlice {
   setActiveTheme: (themeId: string) => void;
   restoreFactoryThemes: () => void;
   themeForSong: (song: Song | null) => Theme;
+  updateSettings: (patch: Partial<AppSettings>) => void;
 
   exportData: () => Backup;
   importData: (data: Backup) => Promise<void>;

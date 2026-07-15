@@ -31,6 +31,7 @@ export const PLACEHOLDER_SETTINGS: AppSettings = {
 };
 
 const REMOVED_THEME_IDS = new Set(['theme-olas3d', 'theme-nubes', 'theme-halo', 'theme-orbe']);
+const REMOVED_SAMPLE_SONG_IDS = new Set(['song-gracia', 'song-grande']);
 
 /** Copia profunda de un tema (elimina referencias y campos undefined). */
 function cloneTheme(theme: Theme): Theme {
@@ -82,9 +83,21 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
       themes = [...themes, ...missingThemes];
       await Promise.all(missingThemes.map((t) => repo.saveTheme(t).catch(() => {})));
     }
+
+    // Retira las dos canciones de demostración antiguas de bibliotecas ya creadas.
+    const removedSampleSongs = songs.filter((song) => REMOVED_SAMPLE_SONG_IDS.has(song.id));
+    if (removedSampleSongs.length) {
+      songs = songs.filter((song) => !REMOVED_SAMPLE_SONG_IDS.has(song.id));
+      await Promise.all(removedSampleSongs.map((song) => repo.deleteSong(song.id).catch(() => {})));
+    }
     if (songs.length === 0) {
       songs = SAMPLE_SONGS;
       await Promise.all(songs.map((sg) => repo.saveSong(sg).catch(() => {})));
+    } else if (!songs.some((song) => song.id.startsWith('songbook-'))) {
+      // Importación inicial del cancionero para bibliotecas existentes.
+      const songbookSongs = SAMPLE_SONGS.filter((song) => song.id.startsWith('songbook-'));
+      songs = [...songs, ...songbookSongs];
+      await Promise.all(songbookSongs.map((song) => repo.saveSong(song).catch(() => {})));
     }
     if (!settings) {
       settings = { defaultThemeId: themes[0].id, language: 'es' };
@@ -106,6 +119,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
         theme: defaultTheme,
         blackout: false,
         showLogo: false,
+        logoUrl: settings.logoUrl,
         clearText: false,
       },
       ready: true,
@@ -243,6 +257,14 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
     const themes = Array.from(byId.values());
     set({ themes });
     DEFAULT_THEMES.forEach((d) => repo.saveTheme(d).catch(console.error));
+  },
+
+  updateSettings: (patch) => {
+    const settings = { ...get().settings, ...patch };
+    const live = { ...get().live, logoUrl: settings.logoUrl };
+    set({ settings, live });
+    repo.saveSettings(settings).catch(console.error);
+    get()._publish?.(live);
   },
 
   exportData: () => {

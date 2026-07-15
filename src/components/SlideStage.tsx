@@ -5,6 +5,7 @@ import { Background } from './Background';
 import { GsapText } from './GsapText';
 import { OverlayEffect } from './OverlayEffect';
 import { loadFont } from '../lib/fonts';
+import appLogo from '../assets/3.png';
 
 interface Props {
   live: LiveState;
@@ -102,7 +103,7 @@ function originFor(align: string, vAlign: string): string {
 }
 
 export function SlideStage({ live, scale = 1 }: Props) {
-  const { theme, slide, blackout, showLogo, clearText } = live;
+  const { theme, slide, blackout, showLogo, logoUrl, clearText } = live;
   const t = theme.transition;
 
   // Carga la tipografia del tema desde Google Fonts (en esta ventana).
@@ -205,19 +206,25 @@ export function SlideStage({ live, scale = 1 }: Props) {
             exit={{ opacity: 0 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="flex items-center gap-4">
-              <div
-                className="grid place-items-center rounded-2xl bg-accent font-black text-white"
-                style={{ width: `${7 * scale}vw`, height: `${7 * scale}vw`, fontSize: `${4 * scale}vw` }}
-              >
-                L
-              </div>
-              <span
-                className="font-extrabold tracking-tight text-white text-shadow-strong"
-                style={{ fontSize: `${4 * scale}vw` }}
-              >
-                Letras
-              </span>
+            <div className="flex items-center justify-center gap-5">
+              <img
+                src={logoUrl || appLogo}
+                alt={logoUrl ? 'Logo de la organización' : 'Wordship Screen'}
+                className="object-contain drop-shadow-2xl"
+                style={{
+                  maxWidth: `${(logoUrl ? 48 : 16) * scale}vw`,
+                  maxHeight: `${(logoUrl ? 48 : 32) * scale}vh`,
+                }}
+              />
+              {!logoUrl && (
+                <span
+                  className="flex flex-col font-extrabold leading-[0.88] tracking-[-0.05em] text-white text-shadow-strong"
+                  style={{ fontSize: `${4 * scale}vw` }}
+                >
+                  <span>Wordship</span>
+                  <span>Screen</span>
+                </span>
+              )}
             </div>
           </motion.div>
         )}
@@ -235,6 +242,7 @@ export function SlideStage({ live, scale = 1 }: Props) {
               {slide && (
                 <motion.div
                   key={slide.id}
+                  className="w-full"
                   variants={VARIANTS[t]}
                   initial="initial"
                   animate="animate"
@@ -253,7 +261,10 @@ export function SlideStage({ live, scale = 1 }: Props) {
                       textTransform: theme.uppercase ? 'uppercase' : 'none',
                       textAlign: theme.alignment,
                       textAlignLast: theme.alignment === 'justify' ? 'justify' : 'auto',
-                      whiteSpace: autoFit ? 'nowrap' : 'normal',
+                      width: '100%',
+                      whiteSpace: 'normal',
+                      overflowWrap: 'normal',
+                      wordBreak: 'normal',
                       transform: `scale(${fitScale})`,
                       transformOrigin: originFor(theme.alignment, theme.vAlign),
                     }}

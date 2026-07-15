@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { toast } from '../../store/toastStore';
+import { ConfirmModal } from '../ConfirmModal';
+import type { Song } from '../../types';
 
 interface Props {
   onEdit: (id: string) => void;
@@ -12,6 +15,7 @@ export function Library({ onEdit }: Props) {
   const createSong = useStore((s) => s.createSong);
   const deleteSong = useStore((s) => s.deleteSong);
   const [query, setQuery] = useState('');
+  const [songToDelete, setSongToDelete] = useState<Song | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,7 +97,7 @@ export function Library({ onEdit }: Props) {
                   tabIndex={0}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (confirm(`¿Eliminar "${song.title}"?`)) deleteSong(song.id);
+                    setSongToDelete(song);
                   }}
                   className="rounded p-1 text-white/50 hover:bg-red-500/20 hover:text-red-300"
                   title="Eliminar"
@@ -105,6 +109,25 @@ export function Library({ onEdit }: Props) {
           );
         })}
       </div>
+
+      <ConfirmModal
+        open={songToDelete !== null}
+        title="Eliminar canción"
+        description={
+          songToDelete
+            ? `¿Quieres eliminar “${songToDelete.title}”? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar canción"
+        destructive
+        onCancel={() => setSongToDelete(null)}
+        onConfirm={() => {
+          if (!songToDelete) return;
+          deleteSong(songToDelete.id);
+          toast.success('Canción eliminada.');
+          setSongToDelete(null);
+        }}
+      />
     </div>
   );
 }

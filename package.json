@@ -1,5 +1,5 @@
 {
-  "name": "letras",
+  "name": "wordship-screen",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "import:songbook": "python3 scripts/import_songbook.py",
     "preview": "vite preview"
   },
   "dependencies": {

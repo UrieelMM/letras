@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { toast } from '../../store/toastStore';
 import { SlideStage } from '../SlideStage';
 import { FONT_OPTIONS, loadFont } from '../../lib/fonts';
 import { REMOVED_BG_PRESETS, REMOVED_THEME_IDS } from '../../lib/removedThemes';
+import { REACT_BITS_PRESETS, REACT_BITS_THEME_IDS } from '../../lib/reactBitsThemes';
+import { uploadThemeImage } from '../../firebase/themeImageStorage';
 import type {
   AnimatedBgPreset,
   BackgroundConfig,
@@ -170,6 +173,25 @@ const ALL_ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = [
   { value: 'auroraBlur', label: 'Aurora Blur' },
   { value: 'liquidLines', label: 'Liquid Lines' },
   { value: 'squircleShift', label: 'Squircle Shift' },
+  { value: 'grainWave', label: 'Grain Wave' },
+  { value: 'glassFlow', label: 'Glass Flow' },
+  { value: 'shadowBars', label: 'Shadow Bars' },
+  { value: 'warpTwister', label: 'Warp Twister' },
+  { value: 'blackHole', label: 'Black Hole' },
+  { value: 'blurredRays', label: 'Blurred Rays' },
+  { value: 'flamePaths', label: 'Flame Paths' },
+  { value: 'gradientBars', label: 'Gradient Bars' },
+  { value: 'halftoneWave', label: 'Halftone Wave' },
+  { value: 'metallicSwirl', label: 'Metallic Swirl' },
+  { value: 'metallicSwirlGold', label: 'Metallic Swirl Gold' },
+  { value: 'retroLines', label: 'Retro Lines' },
+  { value: 'rubberFluid', label: 'Rubber Fluid' },
+  { value: 'squareMatrix', label: 'Square Matrix' },
+  { value: 'swirlBlend', label: 'Swirl Blend' },
+  { value: 'asciiTiles', label: 'ASCII Tiles' },
+  { value: 'twilightLines', label: 'Twilight Lines' },
+  { value: 'chromaBlinds', label: 'Chroma Blinds' },
+  { value: 'glassTiles', label: 'Glass Tiles' },
 ];
 
 const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = ALL_ANIM_PRESETS.filter(
@@ -177,14 +199,36 @@ const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = ALL_ANIM_PRES
     !REMOVED_BG_PRESETS.has(preset.value),
 );
 
+function isReactBitsTheme(theme: Theme) {
+  return (
+    REACT_BITS_THEME_IDS.has(theme.id) ||
+    (theme.background.kind === 'animated' && REACT_BITS_PRESETS.has(theme.background.preset))
+  );
+}
+
+function ReactBitsStar() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-3.5 w-3.5 fill-amber-300 text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.45)]"
+    >
+      <path d="m12 2.3 2.88 5.84 6.45.94-4.67 4.55 1.1 6.42L12 17.02l-5.76 3.03 1.1-6.42-4.67-4.55 6.45-.94L12 2.3Z" />
+    </svg>
+  );
+}
+
 export function ThemePanel() {
   const [themeSearch, setThemeSearch] = useState('');
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [highlightedThemeIndex, setHighlightedThemeIndex] = useState(0);
+  const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const themes = useStore((s) => s.themes);
   const songs = useStore((s) => s.songs);
   const activeSongId = useStore((s) => s.activeSongId);
   const customizeTheme = useStore((s) => s.customizeTheme);
+  const saveTheme = useStore((s) => s.saveTheme);
   const setActiveTheme = useStore((s) => s.setActiveTheme);
   const restoreFactoryThemes = useStore((s) => s.restoreFactoryThemes);
   const themeForSong = useStore((s) => s.themeForSong);
@@ -243,6 +287,28 @@ export function ThemePanel() {
     customizeTheme({ ...theme, overlay: { ...current, ...patch } });
   }
 
+  async function handleImageUpload(file: File | undefined) {
+    if (!file) return;
+    setImageUploadProgress(0);
+    try {
+      const url = await uploadThemeImage(file, setImageUploadProgress);
+      const uploadedTheme: Theme = {
+        ...theme,
+        background: { kind: 'image', url, fit: 'cover' },
+      };
+      customizeTheme(uploadedTheme);
+      // Sin una canción activa, la personalización pertenece al tema seleccionado.
+      if (!activeSongId) saveTheme(uploadedTheme);
+      toast.success('Imagen subida y guardada en el tema.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo subir la imagen.';
+      toast.error(message);
+    } finally {
+      setImageUploadProgress(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  }
+
   return (
     <div className="h-full space-y-5 overflow-y-auto p-4">
       {/* Vista previa del tema */}
@@ -282,6 +348,7 @@ export function ThemePanel() {
                   : undefined
               }
               onFocus={() => setThemeMenuOpen(true)}
+              onClick={() => setThemeMenuOpen(true)}
               onBlur={() => setThemeMenuOpen(false)}
               onChange={(e) => {
                 setThemeSearch(e.target.value);
@@ -353,8 +420,16 @@ export function ThemePanel() {
                       setThemeMenuOpen(false);
                     }}
                   >
-                    <span>{t.name}</span>
-                    {t.id === theme.id && <span className="text-accent-soft">✓</span>}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{t.name}</span>
+                      {isReactBitsTheme(t) && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-200">
+                          <ReactBitsStar />
+                          Favorites
+                        </span>
+                      )}
+                    </span>
+                    {t.id === theme.id && <span className="ml-2 text-accent-soft">✓</span>}
                   </button>
                 ))
               )}
@@ -571,7 +646,7 @@ export function ThemePanel() {
             >
               {ANIM_PRESETS.map((p) => (
                 <option key={p.value} value={p.value}>
-                  {p.label}
+                  {REACT_BITS_PRESETS.has(p.value) ? `★ ${p.label}` : p.label}
                 </option>
               ))}
             </select>
@@ -607,14 +682,54 @@ export function ThemePanel() {
         )}
 
         {theme.background.kind === 'image' && (
-          <input
-            className="input"
-            placeholder="URL de la imagen (https://...)"
-            value={theme.background.url}
-            onChange={(e) =>
-              updateBg({ kind: 'image', url: e.target.value, fit: 'cover' })
-            }
-          />
+          <div className="space-y-2.5">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+              className="hidden"
+              onChange={(e) => void handleImageUpload(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              className="group flex w-full items-center gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.03] p-3 text-left transition hover:border-accent/60 hover:bg-accent/5 disabled:cursor-wait disabled:opacity-60"
+              disabled={imageUploadProgress !== null}
+              onClick={() => imageInputRef.current?.click()}
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent-soft transition group-hover:bg-accent group-hover:text-white">
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current stroke-2">
+                  <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+                </svg>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-white">
+                  {imageUploadProgress === null
+                    ? 'Subir imagen a Firebase'
+                    : `Subiendo imagen... ${imageUploadProgress}%`}
+                </span>
+                <span className="block text-[11px] text-white/40">JPG, PNG, WebP, GIF o AVIF · máximo 10 MB</span>
+              </span>
+            </button>
+            {imageUploadProgress !== null && (
+              <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-accent transition-[width]"
+                  style={{ width: `${imageUploadProgress}%` }}
+                />
+              </div>
+            )}
+            <div>
+              <label className="label">O usar URL externa</label>
+              <input
+                className="input"
+                placeholder="https://..."
+                value={theme.background.url}
+                onChange={(e) =>
+                  updateBg({ kind: 'image', url: e.target.value, fit: 'cover' })
+                }
+              />
+            </div>
+          </div>
         )}
       </section>
 

@@ -1,14 +1,14 @@
-# Letras — Software de Proyección de Letras para Iglesias (Web)
+# Wordship Screen — Software de Proyección de Letras para Iglesias (Web)
 
 > Alternativa **100% web** a ProPresenter, EasyWorship, OpenLP y HolyLyrics.
-> Letras con animaciones profesionales, fondos de imagen y fondos animados propios, todo personalizable.
+> Wordship Screen con animaciones profesionales, fondos de imagen y fondos animados propios, todo personalizable.
 > Persistencia inicial en **localStorage** (migrable a base de datos más adelante).
 
 ---
 
 ## 1. Resumen ejecutivo
 
-**Letras** es una aplicación web para mostrar en vivo las letras de canciones (y versículos, anuncios, etc.) durante servicios de iglesia. El operador controla la presentación desde una ventana de control, mientras el público ve una ventana de proyección a pantalla completa en el proyector o segunda pantalla — exactamente el modelo de ProPresenter.
+**Wordship Screen** es una aplicación web para mostrar en vivo las letras de canciones (y versículos, anuncios, etc.) durante servicios de iglesia. El operador controla la presentación desde una ventana de control, mientras el público ve una ventana de proyección a pantalla completa en el proyector o segunda pantalla — exactamente el modelo de ProPresenter.
 
 El objetivo es un producto **profesional**: transiciones suaves entre estrofas, tipografía legible a distancia, fondos con buen contraste, fondos animados generados por la propia app, y personalización total de temas, fuentes, colores y animaciones.
 
@@ -389,6 +389,22 @@ Stack de Firebase usado:
    (cada usuario sólo accede a sus propios datos).
 4. `npm run dev`. Si las llaves están presentes, aparece la pantalla de login;
    si no, la app corre en **modo local** sin cuenta.
+
+### Dominios autorizados para Google
+
+Google Sign-In requiere autorizar cada host desde **Firebase Console →
+Authentication → Settings → Authorized domains**. Agrega el nombre del host sin
+protocolo ni puerto, por ejemplo:
+
+- `localhost`
+- `127.0.0.1`
+- `letras.tudominio.com`
+
+Una IP de red local, como `192.168.1.20`, también debe agregarse por separado.
+En proyectos creados después del 28 de abril de 2025, incluso `localhost` puede
+requerir autorización manual. Mantén `VITE_FIREBASE_AUTH_DOMAIN` con el valor
+exacto del SDK de Firebase, normalmente `TU_PROYECTO.firebaseapp.com`; no lo
+cambies por el dominio de Vercel, Netlify u otro hosting externo.
 
 > Migrar de local a Firebase no toca la UI ni el store: sólo cambia el
 > repositorio activo. Los datos se siembran (temas + canciones de ejemplo) la

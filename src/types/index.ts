@@ -1,4 +1,4 @@
-// ---------- Modelo de datos de Letras ----------
+// ---------- Modelo de datos de Wordship Screen ----------
 
 export type SlideBlockType =
   | 'verse'
@@ -180,7 +180,26 @@ export type AnimatedBgPreset =
   | 'liquidBars'
   | 'auroraBlur'
   | 'liquidLines'
-  | 'squircleShift';
+  | 'squircleShift'
+  | 'grainWave'
+  | 'glassFlow'
+  | 'shadowBars'
+  | 'warpTwister'
+  | 'blackHole'
+  | 'blurredRays'
+  | 'flamePaths'
+  | 'gradientBars'
+  | 'halftoneWave'
+  | 'metallicSwirl'
+  | 'metallicSwirlGold'
+  | 'retroLines'
+  | 'rubberFluid'
+  | 'squareMatrix'
+  | 'swirlBlend'
+  | 'asciiTiles'
+  | 'twilightLines'
+  | 'chromaBlinds'
+  | 'glassTiles';
 
 // Capa de efectos que se superpone SOBRE cualquier fondo (incl. imagen)
 export type OverlayEffectPreset =
@@ -262,6 +281,7 @@ export interface Setlist {
 export interface AppSettings {
   defaultThemeId: string;
   language: 'es' | 'en';
+  logoUrl?: string;
 }
 
 // Un slide renderizable; un bloque solo se parte mediante líneas vacías manuales.
@@ -281,6 +301,7 @@ export interface LiveState {
   theme: Theme;
   blackout: boolean;
   showLogo: boolean;
+  logoUrl?: string;
   clearText: boolean; // oculta el texto, mantiene el fondo
 }
 

@@ -12,7 +12,7 @@ export function OutputView() {
   const setLive = useStore((s) => s.setLive);
 
   useEffect(() => {
-    document.title = 'Letras — Proyección';
+    document.title = 'Wordship Screen — Proyección';
     const channel = createChannel();
     const unsub = channel.subscribe((msg) => {
       if (msg.type === 'LIVE') setLive(msg.payload);

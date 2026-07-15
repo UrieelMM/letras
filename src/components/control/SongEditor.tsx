@@ -17,14 +17,19 @@ export function SongEditor({ songId, onClose }: Props) {
   const saveSong = useStore((s) => s.saveSong);
   const original = songs.find((s) => s.id === songId);
   const [draft, setDraft] = useState<Song | null>(original ?? null);
+  const [tagsText, setTagsText] = useState(original?.tags.join(', ') ?? '');
 
   useEffect(() => {
     setDraft(original ? { ...original } : null);
+    setTagsText(original?.tags.join(', ') ?? '');
   }, [songId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Si la canción llega después (carga async / Firestore), rellena el borrador.
   useEffect(() => {
-    if (!draft && original) setDraft({ ...original });
+    if (!draft && original) {
+      setDraft({ ...original });
+      setTagsText(original.tags.join(', '));
+    }
   }, [draft, original]);
 
   if (!draft) return null;
@@ -71,7 +76,11 @@ export function SongEditor({ songId, onClose }: Props) {
       toast.error('Ponle un título a la canción.');
       return;
     }
-    saveSong(draft);
+    const tags = tagsText
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    saveSong({ ...draft, tags: Array.from(new Set(tags)) });
     toast.success('Canción guardada.');
     onClose();
   }
@@ -109,15 +118,9 @@ export function SongEditor({ songId, onClose }: Props) {
             <label className="label">Etiquetas (separadas por coma)</label>
             <input
               className="input"
-              value={draft.tags.join(', ')}
-              onChange={(e) =>
-                set({
-                  tags: e.target.value
-                    .split(',')
-                    .map((t) => t.trim())
-                    .filter(Boolean),
-                })
-              }
+              value={tagsText}
+              placeholder="Ej. alabanza, adoración, himno"
+              onChange={(e) => setTagsText(e.target.value)}
             />
           </div>
 

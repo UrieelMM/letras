@@ -1,6 +1,6 @@
 import type { SyncMessage } from '../types';
 
-const CHANNEL_NAME = 'letras-live';
+const CHANNEL_NAME = 'wordship-screen-live';
 
 /**
  * Canal de comunicación entre la ventana de control y la de proyección.

@@ -1,24 +1,42 @@
+import AsciiTiles from './ascii-tiles';
 import type { BackgroundConfig } from '../types';
 import AuroraBlur from './aurora-blur';
+import BlackHole from './black-hole';
+import BlurredRays from './blurred-rays';
+import ChromaBlinds from './chroma-blinds';
 import ChromaWaves from './chroma-waves';
 import ColorLoops from './color-loops';
 import DitherWave from './dither-wave';
 import FallingRays from './falling-rays';
+import FlamePaths from './flame-paths';
+import GlassFlow from './glass-flow';
+import GlassTiles from './glass-tiles';
 import GlitterWarp from './glitter-warp';
+import GradientBars from './gradient-bars';
+import GrainWave from './grain-wave';
+import HalftoneWave from './halftone-wave';
 import LightDroplets from './light-droplets';
 import LiquidBars from './liquid-bars';
 import LiquidLines from './liquid-lines';
 import Lightspeed from './lightspeed';
+import MetallicSwirl from './metallic-swirl';
 import Mosaic from './mosaic';
 import Portal from './portal';
 import RadialLiquid from './radial-liquid';
+import RetroLines from './retro-lines';
 import RisingLines from './rising-lines';
 import RotatingStars from './rotating-stars';
+import RubberFluid from './rubber-fluid';
+import ShadowBars from './shadow-bars';
 import ShaderWaves from './shader-waves';
 import SilkWaves from './silk-waves';
 import SquircleShift from './squircle-shift';
+import SquareMatrix from './square-matrix';
 import StarBurst from './star-burst';
+import SwirlBlend from './swirl-blend';
 import { ThreeBackground } from './ThreeBackground';
+import TwilightLines from './twilight-lines';
+import WarpTwister from './warp-twister';
 
 interface Props {
   bg: BackgroundConfig;
@@ -216,6 +234,255 @@ export function Background({ bg }: Props) {
             colorTint={bg.colorA}
             lightBackground={bg.colorB}
             darkBackground={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'grainWave') {
+        return (
+          <GrainWave
+            width="100%"
+            height="100%"
+            startColor={bg.colorA}
+            endColor={bg.colorA}
+            lightBackground={bg.colorB}
+            darkBackground={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'glassFlow') {
+        return (
+          <GlassFlow
+            width="100%"
+            height="100%"
+            imageSrc="https://images.unsplash.com/photo-1497294815431-9365093b7331?q=80&w=3270&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            stripeCount={6}
+            angle={-13}
+            lensCurvature={0.49}
+            refraction={0.07}
+            edgeWidth={0.02}
+            edgeBrightness={0.05}
+            speed={0.1}
+            chromaticAberration={0.5}
+            edgeSharpness={0.5}
+            waveSpeed={1}
+            waveAmount={0}
+            frostAmount={0}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'shadowBars') {
+        return <ShadowBars className="absolute inset-0" />;
+      }
+      if (bg.preset === 'warpTwister') {
+        return (
+          <WarpTwister
+            radius={1.5}
+            narrow={1.8}
+            length={10}
+            hazeSpeed={0.5}
+            dustSpeed={1}
+            hazeStrength={0.25}
+            hazeFrequency={100}
+            dustDensity={300}
+            dustSize={100}
+            dustOpacity={0.1}
+            edgeFade={2}
+            spiralTight={0.5}
+            rotSpeed={0}
+            baseColor={[0.753, 0.518, 0.988]}
+            baseColorLight={[0.267, 0, 0.667]}
+            cameraDistance={8.5}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'blackHole') {
+        return (
+          <BlackHole
+            width="100%"
+            height="100%"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'blurredRays') {
+        return (
+          <BlurredRays
+            width="100%"
+            height="100%"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'flamePaths') {
+        return (
+          <FlamePaths
+            width="100%"
+            height="100%"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'gradientBars') {
+        return (
+          <GradientBars
+            width="100%"
+            height="100%"
+            color={bg.colorA}
+            backgroundColor={bg.colorB}
+            barCount={6}
+            balance={0.3}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'halftoneWave') {
+        return (
+          <HalftoneWave
+            width="100%"
+            height="100%"
+            colorA={bg.colorA}
+            colorB="#ffffff"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'metallicSwirl') {
+        return (
+          <MetallicSwirl
+            width="100%"
+            height="100%"
+            colorPhaseR={1}
+            colorPhaseG={3}
+            colorPhaseB={5}
+            colorRange={0.8}
+            colorBias={0.5}
+            brightness={1.2}
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'metallicSwirlGold') {
+        return (
+          <MetallicSwirl
+            width="100%"
+            height="100%"
+            colorPhaseR={0.5}
+            colorPhaseG={1.2}
+            colorPhaseB={2.8}
+            colorRange={0.6}
+            colorBias={0.55}
+            backgroundColor="#1a1000"
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'retroLines') {
+        return (
+          <RetroLines
+            width="100%"
+            height="100%"
+            color1={bg.colorA}
+            color2="#ffb347"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'rubberFluid') {
+        return (
+          <RubberFluid
+            width="100%"
+            height="100%"
+            tintR={1}
+            tintG={0.3}
+            tintB={0.01}
+            contrast={6}
+            preBrightness={2.5}
+            glowIntensity={1}
+            backgroundColor="#0a0200"
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'squareMatrix') {
+        return (
+          <SquareMatrix
+            width="100%"
+            height="100%"
+            color="#00ffcc"
+            backgroundColor="#0a0a0a"
+            peakBrightness={2.5}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'swirlBlend') {
+        return (
+          <SwirlBlend
+            width="100%"
+            height="100%"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'asciiTiles') {
+        return (
+          <AsciiTiles
+            width="100%"
+            height="100%"
+            glyphColor={bg.colorA}
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'twilightLines') {
+        return (
+          <TwilightLines
+            width="100%"
+            height="100%"
+            lineColor={bg.colorA}
+            pulseColor="#fff4d6"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'chromaBlinds') {
+        return (
+          <ChromaBlinds
+            width="100%"
+            height="100%"
+            lineCount={6}
+            lineThickness={0.18}
+            contrast={0.9}
+            cursorInteraction={false}
+            colorA={bg.colorA}
+            colorB="#ff7ac6"
+            colorC="#70e1ff"
+            backgroundColor={bg.colorB}
+            className="absolute inset-0"
+          />
+        );
+      }
+      if (bg.preset === 'glassTiles') {
+        return (
+          <GlassTiles
+            width="100%"
+            height="100%"
+            colorA={bg.colorA}
+            colorB="#ffffff"
+            backgroundColor={bg.colorB}
             className="absolute inset-0"
           />
         );

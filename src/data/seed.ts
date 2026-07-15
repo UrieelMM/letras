@@ -1,5 +1,32 @@
 import type { Song, Theme } from '../types';
 import { REMOVED_THEME_IDS } from '../lib/removedThemes';
+import { SONGBOOK_SONGS } from './songbook.generated';
+
+type AnimatedThemePreset = Extract<Theme['background'], { kind: 'animated' }>['preset'];
+
+function reactBitsTheme(
+  id: string,
+  name: string,
+  preset: AnimatedThemePreset,
+  colorA: string,
+  colorB: string,
+): Theme {
+  return {
+    id,
+    name,
+    font: { family: 'Montserrat', weight: 700, sizeVw: 5, lineHeight: 1.2, letterSpacing: 0 },
+    color: { text: '#ffffff', shadow: true },
+    alignment: 'center',
+    vAlign: 'middle',
+    uppercase: false,
+    maxLinesPerSlide: 4,
+    transition: 'crossfade',
+    textReveal: 'wordsUp',
+    textMotion: 'float',
+    background: { kind: 'animated', preset, colorA, colorB },
+    contrast: { overlayColor: '#000000', overlayOpacity: 0.2, blurPx: 0 },
+  };
+}
 
 const ALL_THEMES: Theme[] = [
   {
@@ -2180,6 +2207,25 @@ const ALL_THEMES: Theme[] = [
     background: { kind: 'animated', preset: 'squircleShift', colorA: '#c084fc', colorB: '#09040f' },
     contrast: { overlayColor: '#000000', overlayOpacity: 0.16, blurPx: 0 },
   },
+  reactBitsTheme('theme-grain-wave', 'Grain Wave', 'grainWave', '#f4efff', '#08070d'),
+  reactBitsTheme('theme-glass-flow', 'Glass Flow', 'glassFlow', '#ffffff', '#100b14'),
+  reactBitsTheme('theme-shadow-bars', 'Shadow Bars', 'shadowBars', '#f4f4f5', '#0b0b0b'),
+  reactBitsTheme('theme-warp-twister', 'Warp Twister', 'warpTwister', '#c084fc', '#15002f'),
+  reactBitsTheme('theme-black-hole', 'Black Hole', 'blackHole', '#8b5cf6', '#000000'),
+  reactBitsTheme('theme-blurred-rays', 'Blurred Rays', 'blurredRays', '#ffd6aa', '#100905'),
+  reactBitsTheme('theme-flame-paths', 'Flame Paths', 'flamePaths', '#ff5a1f', '#090100'),
+  reactBitsTheme('theme-gradient-bars', 'Gradient Bars', 'gradientBars', '#ff6b6b', '#1a1a2e'),
+  reactBitsTheme('theme-halftone-wave', 'Halftone Wave', 'halftoneWave', '#55ddff', '#08081a'),
+  reactBitsTheme('theme-metallic-swirl', 'Metallic Swirl', 'metallicSwirl', '#70d6ff', '#050512'),
+  reactBitsTheme('theme-metallic-swirl-gold', 'Metallic Swirl Gold', 'metallicSwirlGold', '#ffd66b', '#1a1000'),
+  reactBitsTheme('theme-retro-lines', 'Retro Lines', 'retroLines', '#ff4fd8', '#080017'),
+  reactBitsTheme('theme-rubber-fluid', 'Rubber Fluid', 'rubberFluid', '#ff4d1a', '#0a0200'),
+  reactBitsTheme('theme-square-matrix', 'Square Matrix', 'squareMatrix', '#00ffcc', '#0a0a0a'),
+  reactBitsTheme('theme-swirl-blend', 'Swirl Blend', 'swirlBlend', '#6ce5ff', '#050217'),
+  reactBitsTheme('theme-ascii-tiles', 'ASCII Tiles', 'asciiTiles', '#54ff91', '#020804'),
+  reactBitsTheme('theme-twilight-lines', 'Twilight Lines', 'twilightLines', '#ffd8aa', '#130b20'),
+  reactBitsTheme('theme-chroma-blinds', 'Chroma Blinds', 'chromaBlinds', '#ff4fd8', '#08030f'),
+  reactBitsTheme('theme-glass-tiles', 'Glass Tiles', 'glassTiles', '#78d9ff', '#05070d'),
 ];
 
 // Los temas con overlay de emojis se excluyen por rendimiento (eran pesados).
@@ -2187,93 +2233,6 @@ export const DEFAULT_THEMES: Theme[] = ALL_THEMES.filter(
   (t) => t.overlay?.preset !== 'emojis' && !REMOVED_THEME_IDS.has(t.id),
 );
 
-const now = Date.now();
-
 export const SAMPLE_SONGS: Song[] = [
-  {
-    id: 'song-gracia',
-    title: 'Sublime Gracia',
-    author: 'John Newton',
-    tags: ['himno', 'clásico'],
-    themeId: 'theme-aurora',
-    createdAt: now,
-    updatedAt: now,
-    blocks: [
-      {
-        id: 'b1',
-        type: 'verse',
-        label: 'Estrofa 1',
-        lines: [
-          'Sublime gracia del Señor',
-          'que un infeliz salvó;',
-          'fui ciego mas hoy miro yo,',
-          'perdido y Él me halló.',
-        ],
-      },
-      {
-        id: 'b2',
-        type: 'verse',
-        label: 'Estrofa 2',
-        lines: [
-          'Su gracia me enseñó a temer,',
-          'mis dudas ahuyentó;',
-          'oh cuán precioso fue a mi ser',
-          'cuando Él me transformó.',
-        ],
-      },
-      {
-        id: 'b3',
-        type: 'verse',
-        label: 'Estrofa 3',
-        lines: [
-          'En los peligros o aflicción',
-          'que yo he tenido aquí,',
-          'su gracia siempre me libró',
-          'y me guiará feliz.',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'song-grande',
-    title: 'Cuán Grande Es Él',
-    author: 'Stuart K. Hine',
-    tags: ['himno', 'adoración'],
-    themeId: 'theme-mesh',
-    createdAt: now,
-    updatedAt: now,
-    blocks: [
-      {
-        id: 'c1',
-        type: 'verse',
-        label: 'Estrofa 1',
-        lines: [
-          'Señor mi Dios, al contemplar los cielos,',
-          'el firmamento y las estrellas mil,',
-          'al oír tu voz en los potentes truenos',
-          'y ver brillar al sol en su cenit,',
-        ],
-      },
-      {
-        id: 'c2',
-        type: 'chorus',
-        label: 'Coro',
-        lines: [
-          'Mi corazón entona la canción:',
-          '¡Cuán grande es Él! ¡Cuán grande es Él!',
-        ],
-      },
-      {
-        id: 'c3',
-        type: 'verse',
-        label: 'Estrofa 2',
-        lines: [
-          'Al recorrer los montes y los valles',
-          'y ver las bellas flores al pasar,',
-          'al escuchar el canto de las aves',
-          'y el murmurar del claro manantial,',
-        ],
-      },
-    ],
-  },
+  ...SONGBOOK_SONGS,
 ];

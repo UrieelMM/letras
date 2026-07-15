@@ -17,7 +17,7 @@ export function ControlView() {
   const [rightTab, setRightTab] = useState<'preview' | 'theme'>('preview');
 
   useEffect(() => {
-    document.title = 'Letras — Control';
+    document.title = 'Wordship Screen — Control';
   }, []);
 
   // Atajos de teclado

@@ -9,6 +9,7 @@ import { toast } from './store/toastStore';
 import { Toaster } from './components/Toaster';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { createChannel } from './sync/channel';
+import appLogo from './assets/3.png';
 
 function Splash({ label }: { label: string }) {
   return (
@@ -25,8 +26,8 @@ function ConfigNeeded() {
   return (
     <div className="grid min-h-screen place-items-center bg-ink-900 p-6 text-white">
       <div className="glass max-w-md rounded-2xl p-7 text-center">
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent text-xl font-black shadow-glow">
-          L
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center overflow-hidden rounded-xl bg-accent shadow-glow">
+          <img src={appLogo} alt="" className="h-16 w-16 max-w-none object-contain" />
         </div>
         <h1 className="mb-2 text-lg font-bold">Configura Firebase</h1>
         <p className="text-sm leading-relaxed text-white/60">

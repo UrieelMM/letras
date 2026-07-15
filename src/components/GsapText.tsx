@@ -376,18 +376,28 @@ function splitWords(line: string, rainbow?: boolean) {
 }
 
 function splitChars(line: string, rainbow?: boolean) {
-  return Array.from(line).map((ch, i) =>
-    ch === ' ' ? (
-      // espacio con ancho propio (un inline-block colapsaría el espacio normal)
-      <span key={i} style={{ display: 'inline-block', width: '0.32em' }} />
-    ) : (
-      <span
-        key={i}
-        className={`g-char ${rainbow ? 'g-rainbow' : ''}`}
-        style={{ display: 'inline-block', animationDelay: rainbow ? `${i * 0.06}s` : undefined }}
-      >
-        {ch}
+  const words = line.split(' ').filter(Boolean);
+  let charOffset = 0;
+
+  return words.flatMap((word, wordIndex) => {
+    const offset = charOffset;
+    charOffset += word.length;
+    const unit = (
+      <span key={`word-${wordIndex}`} className="inline-block whitespace-nowrap">
+        {Array.from(word).map((ch, charIndex) => (
+          <span
+            key={charIndex}
+            className={`g-char ${rainbow ? 'g-rainbow' : ''}`}
+            style={{
+              display: 'inline-block',
+              animationDelay: rainbow ? `${(offset + charIndex) * 0.06}s` : undefined,
+            }}
+          >
+            {ch}
+          </span>
+        ))}
       </span>
-    ),
-  );
+    );
+    return wordIndex < words.length - 1 ? [unit, ' '] : [unit];
+  });
 }

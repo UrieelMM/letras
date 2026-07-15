@@ -1,20 +1,24 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useStore, type Backup } from '../../store/useStore';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from '../../store/toastStore';
 import { openOutputWindow, hasMultiScreenSupport } from '../../sync/screens';
+import { uploadBrandLogo } from '../../firebase/themeImageStorage';
+import appLogo from '../../assets/3.png';
 
 export function Toolbar() {
   const live = useStore((s) => s.live);
   const toggleBlackout = useStore((s) => s.toggleBlackout);
   const toggleLogo = useStore((s) => s.toggleLogo);
   const toggleClear = useStore((s) => s.toggleClear);
-  const clearLive = useStore((s) => s.clearLive);
   const exportData = useStore((s) => s.exportData);
   const importData = useStore((s) => s.importData);
+  const updateSettings = useStore((s) => s.updateSettings);
   const user = useAuthStore((s) => s.user);
   const signOutUser = useAuthStore((s) => s.signOutUser);
   const fileRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [logoUploadProgress, setLogoUploadProgress] = useState<number | null>(null);
 
   async function handleOpenOutput() {
     const win = await openOutputWindow();
@@ -29,7 +33,7 @@ export function Toolbar() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `letras-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `wordship-screen-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Respaldo exportado.');
@@ -59,15 +63,32 @@ export function Toolbar() {
       .catch(() => toast.error('No se pudo cerrar sesión.'));
   }
 
+  async function handleLogoUpload(file: File | undefined) {
+    if (!file) return;
+    setLogoUploadProgress(0);
+    try {
+      const logoUrl = await uploadBrandLogo(file, setLogoUploadProgress);
+      updateSettings({ logoUrl });
+      toast.success('Logo subido y guardado para la proyección.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo subir el logo.';
+      toast.error(message);
+    } finally {
+      setLogoUploadProgress(null);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  }
+
   return (
     <header className="flex items-center justify-between gap-4 border-b border-white/5 bg-ink-800/60 px-5 py-3 backdrop-blur-xl">
       <div className="flex items-center gap-2.5">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent font-black text-white shadow-glow">
-          L
+        <div className="grid h-[50px] w-[50px] place-items-center overflow-hidden bg-transparent">
+          <img src={appLogo} alt="" className="h-[50px] w-[50px] max-w-none object-contain" />
         </div>
-        <div>
-          <div className="text-sm font-bold leading-none text-white">Letras</div>
-          <div className="text-[10px] text-white/40">
+        <div className="leading-none">
+          <div className="text-xs font-extrabold text-white">Wordship</div>
+          <div className="mt-0.5 text-xs font-extrabold text-white">Screen</div>
+          <div className="mt-1 text-[9px] text-white/40">
             {hasMultiScreenSupport() ? 'Multi-pantalla activa' : 'Modo ventana'}
           </div>
         </div>
@@ -81,22 +102,44 @@ export function Toolbar() {
         >
           Clear
         </button>
-        <button
-          className={`btn-soft ${live.showLogo ? '!bg-accent !text-white' : ''}`}
-          onClick={toggleLogo}
-        >
-          Logo
-        </button>
+        <div className="flex items-stretch">
+          <button
+            className={`btn-soft !rounded-r-none ${live.showLogo ? '!bg-accent !text-white' : ''}`}
+            onClick={toggleLogo}
+            title="Mostrar u ocultar el logo en la proyección"
+          >
+            Logo
+          </button>
+          <button
+            type="button"
+            className="btn-soft !rounded-l-none !border-l !border-white/10 !px-2"
+            title="Cargar logo personalizado"
+            aria-label="Cargar logo personalizado"
+            disabled={logoUploadProgress !== null}
+            onClick={() => logoInputRef.current?.click()}
+          >
+            {logoUploadProgress === null ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-none stroke-current stroke-2">
+                <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+              </svg>
+            ) : (
+              <span className="text-[10px]">{logoUploadProgress}%</span>
+            )}
+          </button>
+        </div>
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/svg+xml"
+          className="hidden"
+          onChange={(e) => void handleLogoUpload(e.target.files?.[0])}
+        />
         <button
           className={`btn-soft ${live.blackout ? '!bg-red-500 !text-white' : ''}`}
           onClick={toggleBlackout}
         >
           Blackout
         </button>
-        <button className="btn-ghost" onClick={clearLive} title="Quitar de proyección">
-          Limpiar
-        </button>
-
         <div className="mx-1 h-6 w-px bg-white/10" />
 
         <button className="btn-ghost" onClick={handleExport} title="Exportar respaldo JSON">

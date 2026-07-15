@@ -11,6 +11,7 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
     theme: DEFAULT_THEMES[0],
     blackout: false,
     showLogo: false,
+    logoUrl: undefined,
     clearText: false,
   },
   slides: [],
@@ -38,6 +39,7 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
       theme,
       blackout: false,
       showLogo: false,
+      logoUrl: get().settings.logoUrl,
       clearText: false,
     };
     set({ live, liveSlideIndex: slideIndex });
@@ -63,7 +65,12 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
   },
 
   toggleLogo: () => {
-    const live = { ...get().live, showLogo: !get().live.showLogo, blackout: false };
+    const live = {
+      ...get().live,
+      showLogo: !get().live.showLogo,
+      logoUrl: get().settings.logoUrl,
+      blackout: false,
+    };
     get().setLive(live);
     get()._publish?.(live);
   },

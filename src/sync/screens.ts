@@ -39,7 +39,7 @@ export async function openOutputWindow(): Promise<Window | null> {
           `width=${external.availWidth}`,
           `height=${external.availHeight}`,
         ].join(',');
-        const win = window.open(url, 'letras-output', features);
+        const win = window.open(url, 'wordship-screen-output', features);
         return win;
       }
     } catch {
@@ -48,7 +48,7 @@ export async function openOutputWindow(): Promise<Window | null> {
   }
 
   // Fallback: ventana grande que el operador arrastra al proyector
-  const win = window.open(url, 'letras-output', 'width=1280,height=720');
+  const win = window.open(url, 'wordship-screen-output', 'width=1280,height=720');
   return win;
 }
 

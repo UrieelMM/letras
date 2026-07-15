@@ -2,12 +2,10 @@ import { create } from 'zustand';
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
-  getRedirectResult,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
   updateProfile,
 } from 'firebase/auth';
@@ -50,22 +48,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   async signInGoogle() {
     if (!auth) return;
     const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (e) {
-      const code = (e as { code?: string })?.code ?? '';
-      // Si el navegador bloquea el popup (o COOP lo interrumpe), usa redirect.
-      if (
-        code === 'auth/popup-blocked' ||
-        code === 'auth/cancelled-popup-request' ||
-        code === 'auth/operation-not-supported-in-this-environment' ||
-        code === 'auth/internal-error'
-      ) {
-        await signInWithRedirect(auth, provider);
-        return;
-      }
-      throw e;
-    }
+    provider.setCustomParameters({ prompt: 'select_account' });
+    // Popup evita los problemas de almacenamiento cross-origin del flujo redirect
+    // cuando la app se publica fuera de Firebase Hosting.
+    await signInWithPopup(auth, provider);
   },
   async resetPassword(email) {
     if (!auth) return;
@@ -79,8 +65,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
 // Listener de sesión (se inicializa una sola vez al cargar el módulo).
 if (isFirebaseConfigured && auth) {
-  // Completa el inicio con Google si se hizo por redirect.
-  getRedirectResult(auth).catch(() => {});
+  auth.languageCode = 'es';
   onAuthStateChanged(auth, (u) => {
     useAuthStore.setState({
       user: u
