@@ -131,8 +131,8 @@ export function SongEditor({ songId, onClose }: Props) {
               </button>
             </div>
             <p className="text-[11px] text-white/40">
-              Cada renglón es una línea en pantalla. Una línea en blanco crea una
-              nueva diapositiva.
+              Cada sección permanece en una sola diapositiva. Solo una línea en blanco crea
+              una nueva diapositiva.
             </p>
 
             {draft.blocks.map((block) => (

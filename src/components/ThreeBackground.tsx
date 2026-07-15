@@ -34,7 +34,27 @@ type ObjectPreset =
   | 'particleFlow'
   | 'starFlow'
   | 'warpSpace';
-type ShaderPreset = Exclude<AnimatedBgPreset, ObjectPreset>;
+type ExternalPreset =
+  | 'shaderWaves'
+  | 'glitterWarp'
+  | 'lightDroplets'
+  | 'lightspeed'
+  | 'ditherWave'
+  | 'radialLiquid'
+  | 'chromaWaves'
+  | 'mosaic'
+  | 'portal'
+  | 'risingLines'
+  | 'colorLoops'
+  | 'rotatingStars'
+  | 'starBurst'
+  | 'silkWaves'
+  | 'fallingRays'
+  | 'liquidBars'
+  | 'auroraBlur'
+  | 'liquidLines'
+  | 'squircleShift';
+type ShaderPreset = Exclude<AnimatedBgPreset, ObjectPreset | ExternalPreset>;
 
 const MODE: Record<ShaderPreset, number> = {
   meshGradient: 0,
@@ -1280,7 +1300,7 @@ export function ThreeBackground({
         uResolution: { value: new THREE.Vector2(w, h) },
         uColorA: { value: new THREE.Color(colorA) },
         uColorB: { value: new THREE.Color(colorB) },
-        uMode: { value: MODE[preset] },
+        uMode: { value: MODE[preset as ShaderPreset] },
       };
       const mat = new THREE.ShaderMaterial({
         vertexShader: VERT,

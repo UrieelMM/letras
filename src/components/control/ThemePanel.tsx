@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { SlideStage } from '../SlideStage';
 import { FONT_OPTIONS, loadFont } from '../../lib/fonts';
+import { REMOVED_BG_PRESETS, REMOVED_THEME_IDS } from '../../lib/removedThemes';
 import type {
   AnimatedBgPreset,
   BackgroundConfig,
@@ -84,7 +86,7 @@ const REVEALS: { value: TextRevealPreset; label: string }[] = [
   { value: 'none', label: 'Sin animación' },
 ];
 
-const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = [
+const ALL_ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = [
   { value: 'meshGradient', label: 'Mesh gradiente' },
   { value: 'aurora', label: 'Aurora' },
   { value: 'starfield', label: 'Estrellas' },
@@ -149,9 +151,36 @@ const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = [
   { value: 'particleFlow', label: 'Vuelo de partículas' },
   { value: 'starFlow', label: 'Campo estelar' },
   { value: 'warpSpace', label: 'Viaje espacio-tiempo' },
+  { value: 'shaderWaves', label: 'Shader Waves' },
+  { value: 'glitterWarp', label: 'Glitter Warp' },
+  { value: 'lightDroplets', label: 'Light Droplets' },
+  { value: 'lightspeed', label: 'Lightspeed' },
+  { value: 'ditherWave', label: 'Dither Wave' },
+  { value: 'radialLiquid', label: 'Radial Liquid' },
+  { value: 'chromaWaves', label: 'Chroma Waves' },
+  { value: 'mosaic', label: 'Mosaic' },
+  { value: 'portal', label: 'Portal' },
+  { value: 'risingLines', label: 'Rising Lines' },
+  { value: 'colorLoops', label: 'Color Loops' },
+  { value: 'rotatingStars', label: 'Rotating Stars' },
+  { value: 'starBurst', label: 'Star Burst' },
+  { value: 'silkWaves', label: 'Silk Waves' },
+  { value: 'fallingRays', label: 'Falling Rays' },
+  { value: 'liquidBars', label: 'Liquid Bars' },
+  { value: 'auroraBlur', label: 'Aurora Blur' },
+  { value: 'liquidLines', label: 'Liquid Lines' },
+  { value: 'squircleShift', label: 'Squircle Shift' },
 ];
 
+const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = ALL_ANIM_PRESETS.filter(
+  (preset): preset is { value: AnimatedBgPreset; label: string } =>
+    !REMOVED_BG_PRESETS.has(preset.value),
+);
+
 export function ThemePanel() {
+  const [themeSearch, setThemeSearch] = useState('');
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [highlightedThemeIndex, setHighlightedThemeIndex] = useState(0);
   const themes = useStore((s) => s.themes);
   const songs = useStore((s) => s.songs);
   const activeSongId = useStore((s) => s.activeSongId);
@@ -159,6 +188,21 @@ export function ThemePanel() {
   const setActiveTheme = useStore((s) => s.setActiveTheme);
   const restoreFactoryThemes = useStore((s) => s.restoreFactoryThemes);
   const themeForSong = useStore((s) => s.themeForSong);
+  const visibleThemes = themes.filter((t) => !REMOVED_THEME_IDS.has(t.id));
+  const normalizedThemeSearch = themeSearch
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('es');
+  const matchingThemes = normalizedThemeSearch
+    ? visibleThemes.filter((t) =>
+        t.name
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLocaleLowerCase('es')
+          .includes(normalizedThemeSearch),
+      )
+    : visibleThemes;
 
   const song = songs.find((s) => s.id === activeSongId) ?? null;
   const theme = themeForSong(song);
@@ -209,7 +253,9 @@ export function ThemePanel() {
       {/* Selector de tema */}
       <div>
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="label !mb-0">Tema ({themes.length})</span>
+          <span className="label !mb-0">
+            Tema ({normalizedThemeSearch ? `${matchingThemes.length} de ` : ''}{visibleThemes.length})
+          </span>
           <button
             className="text-[11px] text-accent-soft hover:text-white"
             title="Agrega/actualiza los temas de fábrica sin borrar los tuyos"
@@ -218,17 +264,103 @@ export function ThemePanel() {
             ↺ Restaurar de fábrica
           </button>
         </div>
-        <select
-          className="input"
-          value={theme.id}
-          onChange={(e) => setActiveTheme(e.target.value)}
-        >
-          {themes.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <div className="relative">
+            <input
+              type="search"
+              className="input pr-9"
+              value={themeSearch}
+              placeholder={`Tema actual: ${theme.name}`}
+              aria-label="Buscar tema"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={themeMenuOpen}
+              aria-controls="theme-search-results"
+              aria-activedescendant={
+                themeMenuOpen && matchingThemes[highlightedThemeIndex]
+                  ? `theme-option-${matchingThemes[highlightedThemeIndex].id}`
+                  : undefined
+              }
+              onFocus={() => setThemeMenuOpen(true)}
+              onBlur={() => setThemeMenuOpen(false)}
+              onChange={(e) => {
+                setThemeSearch(e.target.value);
+                setHighlightedThemeIndex(0);
+                setThemeMenuOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setThemeMenuOpen(true);
+                  if (matchingThemes.length > 0) {
+                    setHighlightedThemeIndex((i) => Math.min(i + 1, matchingThemes.length - 1));
+                  }
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setHighlightedThemeIndex((i) => Math.max(i - 1, 0));
+                } else if (e.key === 'Enter' && themeMenuOpen && matchingThemes[highlightedThemeIndex]) {
+                  e.preventDefault();
+                  setActiveTheme(matchingThemes[highlightedThemeIndex].id);
+                  setThemeSearch('');
+                  setThemeMenuOpen(false);
+                } else if (e.key === 'Escape') {
+                  setThemeMenuOpen(false);
+                }
+              }}
+            />
+            {themeSearch && (
+              <button
+                type="button"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-lg leading-none text-slate-400 hover:text-white"
+                aria-label="Limpiar búsqueda de temas"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setThemeSearch('');
+                  setHighlightedThemeIndex(0);
+                  setThemeMenuOpen(true);
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+          {themeMenuOpen && (
+            <div
+              id="theme-search-results"
+              role="listbox"
+              className="absolute z-30 mt-1.5 max-h-56 w-full overflow-y-auto rounded-lg border border-white/10 bg-slate-950/95 p-1 shadow-2xl backdrop-blur-xl"
+            >
+              {matchingThemes.length === 0 ? (
+                <div className="px-3 py-2.5 text-sm text-slate-400">No se encontraron temas</div>
+              ) : (
+                matchingThemes.map((t, index) => (
+                  <button
+                    key={t.id}
+                    id={`theme-option-${t.id}`}
+                    type="button"
+                    role="option"
+                    aria-selected={t.id === theme.id}
+                    className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                      index === highlightedThemeIndex
+                        ? 'bg-accent/20 text-white'
+                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setHighlightedThemeIndex(index)}
+                    onClick={() => {
+                      setActiveTheme(t.id);
+                      setThemeSearch('');
+                      setThemeMenuOpen(false);
+                    }}
+                  >
+                    <span>{t.name}</span>
+                    {t.id === theme.id && <span className="text-accent-soft">✓</span>}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tipografía */}
@@ -349,14 +481,6 @@ export function ThemePanel() {
           ]}
           value={theme.vAlign}
           onChange={(v) => update({ vAlign: v as Theme['vAlign'] })}
-        />
-        <Range
-          label={`Máx. líneas por slide (${theme.maxLinesPerSlide})`}
-          min={1}
-          max={8}
-          step={1}
-          value={theme.maxLinesPerSlide}
-          onChange={(v) => update({ maxLinesPerSlide: v })}
         />
       </section>
 

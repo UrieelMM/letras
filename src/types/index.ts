@@ -12,7 +12,7 @@ export interface SlideBlock {
   id: string;
   type: SlideBlockType;
   label?: string; // "Estrofa 1", "Coro"...
-  lines: string[]; // líneas de texto crudas (se dividen en slides)
+  lines: string[]; // líneas de texto crudas; una línea vacía crea un slide manual
 }
 
 export interface Song {
@@ -161,7 +161,26 @@ export type AnimatedBgPreset =
   | 'galaxySpiral'
   | 'particleFlow'
   | 'starFlow'
-  | 'warpSpace';
+  | 'warpSpace'
+  | 'shaderWaves'
+  | 'glitterWarp'
+  | 'lightDroplets'
+  | 'lightspeed'
+  | 'ditherWave'
+  | 'radialLiquid'
+  | 'chromaWaves'
+  | 'mosaic'
+  | 'portal'
+  | 'risingLines'
+  | 'colorLoops'
+  | 'rotatingStars'
+  | 'starBurst'
+  | 'silkWaves'
+  | 'fallingRays'
+  | 'liquidBars'
+  | 'auroraBlur'
+  | 'liquidLines'
+  | 'squircleShift';
 
 // Capa de efectos que se superpone SOBRE cualquier fondo (incl. imagen)
 export type OverlayEffectPreset =
@@ -245,7 +264,7 @@ export interface AppSettings {
   language: 'es' | 'en';
 }
 
-// Un slide ya "renderizable": un bloque puede partirse en varios.
+// Un slide renderizable; un bloque solo se parte mediante líneas vacías manuales.
 export interface RenderSlide {
   id: string;
   blockId: string;

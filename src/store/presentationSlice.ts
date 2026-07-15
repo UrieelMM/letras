@@ -22,8 +22,7 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
 
   setActiveSong: (id) => {
     const song = get().songs.find((s) => s.id === id) ?? null;
-    const theme = get().themeForSong(song);
-    const slides = song ? buildSlides(song, theme) : [];
+    const slides = song ? buildSlides(song) : [];
     set({ activeSongId: id, slides });
   },
 

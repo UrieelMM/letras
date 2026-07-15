@@ -1,12 +1,11 @@
-import type { RenderSlide, Song, Theme } from '../types';
+import type { RenderSlide, Song } from '../types';
 
 /**
  * Convierte los bloques de una canción en slides renderizables.
  * - Una LÍNEA EN BLANCO separa diapositivas (salto manual de slide).
- * - Además, los grupos largos se dividen según theme.maxLinesPerSlide.
+ * - Nunca divide automáticamente el contenido escrito por el usuario.
  */
-export function buildSlides(song: Song, theme: Theme): RenderSlide[] {
-  const max = Math.max(1, theme.maxLinesPerSlide);
+export function buildSlides(song: Song): RenderSlide[] {
   const slides: RenderSlide[] = [];
 
   for (const block of song.blocks) {
@@ -25,24 +24,17 @@ export function buildSlides(song: Song, theme: Theme): RenderSlide[] {
     }
     if (current.length) groups.push(current);
 
-    // Divide cada grupo según el máximo de líneas por slide.
-    const chunks: string[][] = [];
-    for (const group of groups) {
-      for (let i = 0; i < group.length; i += max) {
-        chunks.push(group.slice(i, i + max));
-      }
-    }
-    if (chunks.length === 0) continue;
+    if (groups.length === 0) continue;
 
-    chunks.forEach((chunk, idx) => {
+    groups.forEach((group, idx) => {
       slides.push({
         id: `${block.id}-${idx}`,
         blockId: block.id,
         type: block.type,
         label: block.label,
-        lines: chunk,
+        lines: group,
         partIndex: idx,
-        partCount: chunks.length,
+        partCount: groups.length,
       });
     });
   }
