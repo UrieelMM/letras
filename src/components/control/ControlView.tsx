@@ -6,6 +6,7 @@ import { SlidesGrid } from './SlidesGrid';
 import { LivePreview } from './LivePreview';
 import { ThemePanel } from './ThemePanel';
 import { SongEditor } from './SongEditor';
+import { BiblePanel } from './BiblePanel';
 
 export function ControlView() {
   const editingSongId = useStore((s) => s.editingSongId);
@@ -14,6 +15,8 @@ export function ControlView() {
   const prev = useStore((s) => s.prev);
   const toggleBlackout = useStore((s) => s.toggleBlackout);
   const toggleLogo = useStore((s) => s.toggleLogo);
+  const workspaceTab = useStore((s) => s.workspaceTab);
+  const setWorkspaceTab = useStore((s) => s.setWorkspaceTab);
   const [rightTab, setRightTab] = useState<'preview' | 'theme'>('preview');
 
   useEffect(() => {
@@ -54,10 +57,31 @@ export function ControlView() {
     <div className="flex h-screen flex-col bg-ink-900 text-white">
       <Toolbar />
 
-      <div className="grid min-h-0 flex-1 grid-cols-[280px_1fr_440px]">
-        {/* Izquierda: biblioteca */}
-        <aside className="min-h-0 border-r border-white/5 bg-ink-800/40">
-          <Library onEdit={(id) => setEditingSong(id)} />
+      <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(400px,1fr)_420px]">
+        {/* Izquierda: letras / Biblia */}
+        <aside className="flex min-h-0 flex-col border-r border-white/5 bg-ink-800/40">
+          <div className="grid grid-cols-2 gap-1 border-b border-white/5 p-2">
+            {(['lyrics', 'bible'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setWorkspaceTab(tab)}
+                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                  workspaceTab === tab
+                    ? 'bg-accent text-white shadow-glow'
+                    : 'text-white/45 hover:bg-white/5 hover:text-white/75'
+                }`}
+              >
+                {tab === 'lyrics' ? 'Letras' : 'Biblia'}
+              </button>
+            ))}
+          </div>
+          <div className="min-h-0 flex-1">
+            {workspaceTab === 'lyrics' ? (
+              <Library onEdit={(id) => setEditingSong(id)} />
+            ) : (
+              <BiblePanel />
+            )}
+          </div>
         </aside>
 
         {/* Centro: slides */}

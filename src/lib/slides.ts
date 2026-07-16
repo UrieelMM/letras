@@ -48,5 +48,6 @@ export const BLOCK_LABELS: Record<string, string> = {
   bridge: 'Puente',
   intro: 'Intro',
   outro: 'Final',
+  scripture: 'Biblia',
   custom: 'Personalizado',
 };

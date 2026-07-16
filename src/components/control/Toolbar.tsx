@@ -1,8 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore, type Backup } from '../../store/useStore';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from '../../store/toastStore';
-import { openOutputWindow, hasMultiScreenSupport } from '../../sync/screens';
+import {
+  openOutputWindow,
+  hasExtendedDisplay,
+  hasMultiScreenSupport,
+} from '../../sync/screens';
+import { createChannel } from '../../sync/channel';
+import type { OutputStatus } from '../../types';
 import { uploadBrandLogo } from '../../firebase/themeImageStorage';
 import appLogo from '../../assets/3.png';
 
@@ -19,13 +25,87 @@ export function Toolbar() {
   const fileRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [logoUploadProgress, setLogoUploadProgress] = useState<number | null>(null);
+  const [openingOutput, setOpeningOutput] = useState(false);
+  const [outputStatus, setOutputStatus] = useState<OutputStatus | null>(null);
+  const [extendedDisplay, setExtendedDisplay] = useState<boolean | null>(() =>
+    hasExtendedDisplay(),
+  );
+  const lastOutputStatusAt = useRef(0);
+
+  useEffect(() => {
+    const channel = createChannel();
+    const unsub = channel.subscribe((message) => {
+      if (message.type !== 'OUTPUT_STATUS') return;
+
+      if (!message.payload.ready) {
+        lastOutputStatusAt.current = 0;
+        setOutputStatus(null);
+        return;
+      }
+
+      lastOutputStatusAt.current = Date.now();
+      setOutputStatus(message.payload);
+    });
+
+    const requestStatus = () => {
+      setExtendedDisplay(hasExtendedDisplay());
+      channel.post({ type: 'REQUEST_OUTPUT_STATUS' });
+
+      if (
+        lastOutputStatusAt.current > 0 &&
+        Date.now() - lastOutputStatusAt.current > 6000
+      ) {
+        lastOutputStatusAt.current = 0;
+        setOutputStatus(null);
+      }
+    };
+
+    requestStatus();
+    const interval = window.setInterval(requestStatus, 2500);
+    return () => {
+      window.clearInterval(interval);
+      unsub();
+      channel.close();
+    };
+  }, []);
 
   async function handleOpenOutput() {
-    const win = await openOutputWindow();
-    if (!win) {
-      toast.error('No se pudo abrir la proyección. Permite las ventanas emergentes.');
+    setOpeningOutput(true);
+    try {
+      const result = await openOutputWindow();
+      setExtendedDisplay(hasExtendedDisplay());
+
+      if (!result.window) {
+        toast.error('No se pudo abrir la proyección. Permite las ventanas emergentes.');
+        return;
+      }
+
+      if (result.placement === 'external') {
+        toast.success(`Proyección enviada a ${result.displayName}. Presiona F en esa ventana.`);
+        return;
+      }
+
+      if (result.reason === 'no-external-display') {
+        toast.info('No se detectó una pantalla extendida. Configura HDMI en modo Extender.');
+      } else if (result.reason === 'permission-denied') {
+        toast.info('La salida está abierta. Autoriza administrar ventanas o muévela al proyector.');
+      } else {
+        toast.info('La salida está abierta. Muévela al proyector y presiona F.');
+      }
+    } finally {
+      setOpeningOutput(false);
     }
   }
+
+  const outputLabel = outputStatus
+    ? outputStatus.fullscreen
+      ? `Proyección activa · ${outputStatus.width}×${outputStatus.height} · completa`
+      : `Proyección activa · ${outputStatus.width}×${outputStatus.height}`
+    : extendedDisplay
+      ? 'Pantalla extendida detectada'
+      : hasMultiScreenSupport()
+        ? 'HDMI: usa modo Extender'
+        : 'Salida manual disponible';
 
   function handleExport() {
     const data = exportData();
@@ -88,8 +168,13 @@ export function Toolbar() {
         <div className="leading-none">
           <div className="text-xs font-extrabold text-white">Wordship</div>
           <div className="mt-0.5 text-xs font-extrabold text-white">Screen</div>
-          <div className="mt-1 text-[9px] text-white/40">
-            {hasMultiScreenSupport() ? 'Multi-pantalla activa' : 'Modo ventana'}
+          <div
+            className={`mt-1 max-w-[190px] truncate text-[9px] ${
+              outputStatus ? 'text-emerald-300/80' : 'text-white/40'
+            }`}
+            title={outputLabel}
+          >
+            {outputLabel}
           </div>
         </div>
       </div>
@@ -160,8 +245,18 @@ export function Toolbar() {
           onChange={handleImport}
         />
 
-        <button className="btn-accent" onClick={handleOpenOutput}>
-          Abrir proyección
+        <button
+          className="btn-accent"
+          onClick={() => void handleOpenOutput()}
+          disabled={openingOutput}
+          title="Usa el HDMI en modo Extender; el dashboard permanece en esta pantalla"
+        >
+          {outputStatus && <span className="h-2 w-2 rounded-full bg-emerald-300" />}
+          {openingOutput
+            ? 'Detectando pantalla…'
+            : outputStatus
+              ? 'Enfocar proyección'
+              : 'Abrir proyección'}
         </button>
 
         <div className="mx-1 h-6 w-px bg-white/10" />

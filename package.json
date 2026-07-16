@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "import:songbook": "python3 scripts/import_songbook.py",
+    "ingest:bible": "node scripts/ingest-bible.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

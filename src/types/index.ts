@@ -6,6 +6,7 @@ export type SlideBlockType =
   | 'bridge'
   | 'intro'
   | 'outro'
+  | 'scripture'
   | 'custom';
 
 export interface SlideBlock {
@@ -266,6 +267,12 @@ export interface Theme {
     overlayOpacity: number; // 0..1
     blurPx: number;
   };
+  /** Estilo de la referencia que acompaña a los pasajes bíblicos. */
+  reference?: {
+    show: boolean;
+    position: 'bottom' | 'top';
+    sizeVw: number;
+  };
 }
 
 export interface SetlistItem {
@@ -282,6 +289,9 @@ export interface AppSettings {
   defaultThemeId: string;
   language: 'es' | 'en';
   logoUrl?: string;
+  /** La Biblia reutiliza los mismos presets, pero conserva su copia personalizada. */
+  bibleThemeId?: string;
+  bibleTheme?: Theme;
 }
 
 // Un slide renderizable; un bloque solo se parte mediante líneas vacías manuales.
@@ -293,6 +303,10 @@ export interface RenderSlide {
   lines: string[];
   partIndex: number;
   partCount: number;
+  /** Sólo existe en slides bíblicos, p. ej. "Juan 3:16 — RV1909". */
+  reference?: string;
+  /** Atribución legal opcional para futuras versiones licenciadas. */
+  attribution?: string;
 }
 
 // Estado que se transmite a la ventana de proyección.
@@ -305,6 +319,15 @@ export interface LiveState {
   clearText: boolean; // oculta el texto, mantiene el fondo
 }
 
+export interface OutputStatus {
+  ready: boolean;
+  fullscreen: boolean;
+  width: number;
+  height: number;
+}
+
 export type SyncMessage =
   | { type: 'LIVE'; payload: LiveState }
-  | { type: 'REQUEST_STATE' };
+  | { type: 'REQUEST_STATE' }
+  | { type: 'REQUEST_OUTPUT_STATUS' }
+  | { type: 'OUTPUT_STATUS'; payload: OutputStatus };

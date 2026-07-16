@@ -3,7 +3,11 @@
 > Diseño técnico para añadir proyección de pasajes bíblicos a **Letras**,
 > reutilizando el motor actual de slides, temas y animaciones.
 > Enfoque **profesional**: offline-first, licencias en regla y escalable a SaaS.
-> Estado: **pendiente de implementar** (este documento es la guía).
+> Estado: **implementación híbrida lista** — pestañas Letras/Biblia, RV1909 y
+> KJV offline; NTV, NIV 2011 y LBLA mediante API.Bible; RVR1960, DHH y PDT
+> mediante Bible API; navegación, búsqueda, rango, proyección, referencia,
+> atribución, FUMS v3 y temas compartidos.
+> Quedan pendientes marcadores y comparación.
 
 ---
 
@@ -26,8 +30,8 @@ las canciones.
    se sirven desde **nuestro propio almacenamiento** (no una API gratuita en
    vivo): proyección instantánea y sin internet.
 2. **Licencias en regla.** Separar versiones de **dominio público** (libres) de
-   las **con derechos** (licenciadas vía API.Bible). Cumplir atribución, caché y
-   límites.
+   las **con derechos** (licenciadas mediante API.Bible). Cumplir
+   atribución, caché y permisos de cada traducción.
 3. **Arquitectura enchufable.** Un único `bibleRepo` con varios proveedores
    detrás (igual que el patrón de repos ya usado para Firestore). La UI no
    cambia cuando se agregan versiones.
@@ -48,29 +52,41 @@ Origen de los datos: descargar JSON normalizado desde fuentes de dominio
 público (p. ej. **get.bible v2**, **wldeh/bible-api**). Se ingieren **una sola
 vez** a nuestro formato (ver §6).
 
-### 3.2 Con derechos de autor (premium, en línea vía API.Bible)
+### 3.2 Con derechos de autor (en línea vía API.Bible)
 
-**RVR1960, NVI, NTV, LBLA**, etc. están protegidas. Se acceden con licencia
-comercial mediante **API.Bible** (American Bible Society):
+Las traducciones modernas están protegidas. Para este proyecto no comercial de
+un solo usuario se usa **API.Bible**, con estas Biblias autorizadas:
 
-- Costo: **desde ~$10 USD/mes por versión** para uso comercial.
-- Requisitos obligatorios:
-  - **Atribución en pantalla**: nombre de la versión, abreviatura, titular de
-    derechos y enlace (vienen en la metadata de la API).
-  - **Caché máx. 14–30 días** (refrescar; no almacenamiento permanente).
-  - **No más de 500 versículos consecutivos** por solicitud/visualización.
-  - Integrar **FUMS** (Fair Use Management System) de API.Bible.
+- NTV — `826f63861180e056-01` (Tyndale House Publishers).
+- NIV 2011 — `78a9f6124f344018-01` (Biblica, Inc.).
+- LBLA — `e3f420b9665abaeb-01` (Lockman Foundation).
+
+- La API key se envía mediante el header `api-key` a `rest.api.bible/v1`.
+- **Atribución en pantalla**: abreviatura y copyright recibidos desde la metadata.
+- Cada consulta de contenido incluye `fums-version=3` y reporta su token FUMS.
+- El texto consultado usa caché local temporal de **máximo 14 días** y nunca se
+  empaqueta ni se guarda como contenido propio.
 - Implicación: estas versiones son **solo en línea** (no se pueden empaquetar
   para offline permanente). Se permite caché corta de lo consultado.
 
-### 3.3 Recomendación de lanzamiento
+### 3.3 API comunitaria sin llave
+
+La aplicación también consume `bible-api.deno.dev` para:
+
+- Reina-Valera 1960 — `rv1960`.
+- Dios Habla Hoy — `dhh`.
+- Palabra de Dios para Todos — `pdt`.
+
+La API ofrece capítulos y búsqueda sin llave y con CORS abierto. Está en
+desarrollo y sus respuestas no incluyen copyright ni términos editoriales de
+las traducciones; antes de distribución pública se deben verificar esos derechos.
+
+### 3.4 Recomendación de lanzamiento
 
 1. **Producción día 1:** RV1909 + KJV (dominio público, offline, gratis, legal).
-2. **Premium (plan de pago):** RVR1960 / NVI / NTV vía API.Bible. El costo por
-   versión se cubre con la suscripción del usuario.
-3. **No usar** bolls/APIs gratuitas en producción comercial (procedencia de
-   datos GPL + sin garantías de licencia/disponibilidad). Útiles solo para
-   prototipar.
+2. **API.Bible:** NTV, NIV 2011 y LBLA según las licencias activas de la cuenta.
+3. **Bible API:** RVR1960, DHH y PDT para el uso solicitado, con el riesgo de
+   disponibilidad/licencia documentado.
 
 ---
 
@@ -85,9 +101,13 @@ comercial mediante **API.Bible** (American Bible Society):
                        │    bibleRepo    │  (interfaz única)
                        └───┬─────────┬───┘
             offline/PD ┌───▼───┐ ┌───▼─────────┐ en línea/licencia
-                       │bundled│ │  apiBible   │ + caché 14d + FUMS
-                       │(JSON) │ │ (scripture) │ + atribución
+                       │bundled│ │ API.Bible  │ + caché 14d + atribución/FUMS
+                       │(JSON) │ │   (API)    │
                        └───────┘ └─────────────┘
+                                      │
+                               ┌──────▼──────┐
+                               │ Bible API  │ sin llave + búsqueda
+                               └─────────────┘
                                 │
                        slides ──▼──▶ SlideStage / proyección (igual que canciones)
 ```
@@ -100,7 +120,8 @@ export interface BibleVersion {
   name: string;        // 'Reina-Valera 1909'
   abbr: string;        // 'RV1909'
   lang: string;        // 'es' | 'en'
-  source: 'bundled' | 'apiBible';
+  source: 'bundled' | 'apiBible' | 'freeBible';
+  available: boolean;
   copyright?: string;  // texto de atribución (requerido en licenciadas)
   link?: string;       // enlace al titular de derechos
 }
@@ -124,8 +145,10 @@ Dos implementaciones detrás de un **dispatcher** que elige por `version.source`
 
 - `bundledRepo`: lee JSON por libro/capítulo desde Firebase Storage / `public/`,
   con índice de búsqueda local (FlexSearch). 100% offline una vez cacheado.
-- `apiBibleRepo`: cliente de `scripture.api.bible` con key, caché ≤14 días en
-  IndexedDB, atribución y FUMS.
+- `apiBibleRepo`: cliente de `rest.api.bible` con API key, un request JSON por
+  capítulo, caché ≤14 días en IndexedDB, búsqueda, atribución y FUMS v3.
+- `freeBibleRepo`: cliente de `bible-api.deno.dev` sin llave para RVR1960, DHH
+  y PDT, con capítulos, búsqueda y caché temporal.
 
 ### 4.2 `bibleStore` (slice de zustand)
 
@@ -180,10 +203,9 @@ Si no existe, se usa un default ("mostrar referencia abajo, pequeña").
 
 Nueva pestaña/sección en la vista de control (junto a Biblioteca):
 
-- **Selector de versión** (con etiqueta de idioma y candado/"premium" en
-  licenciadas no contratadas).
+- **Selector de versión** con estado offline, en línea o pendiente de configurar.
 - **Navegador**: libro (grilla 66) → capítulo (grilla) → versículos.
-- **Buscador** de texto completo (instantáneo en offline; FUMS en API.Bible).
+- **Buscador** de texto completo en versiones offline y en ambos proveedores.
 - **Rango**: seleccionar "del versículo X al Y" para proyectar.
 - Botón **Proyectar** (manda a `SlideStage` con el tema activo).
 - **Comparación en paralelo** (fase 2): dos versiones lado a lado.
@@ -214,7 +236,8 @@ cachea (IndexedDB). Mapa de **nombres de libros** localizados (es/en) y
 - **Dominio público**: capítulos cacheados en IndexedDB → offline total tras la
   primera visita. (Opcional: precarga de libros frecuentes.)
 - **API.Bible**: caché de capítulos consultados con **TTL ≤ 14 días**; refrescar
-  o purgar según términos. Nunca persistir como propio.
+  después del vencimiento. Nunca persistir como propio.
+- **Bible API**: misma caché temporal por capítulo; no se empaqueta su contenido.
 - La caché de Firestore del usuario puede guardar **marcadores/última posición**,
   no el texto licenciado.
 
@@ -242,7 +265,8 @@ src/
 │   ├── types.ts                 # BibleVersion, BibleVerse, Passage
 │   ├── bibleRepo.ts             # interfaz + dispatcher por source
 │   ├── bundledRepo.ts           # versiones de dominio público (offline)
-│   ├── apiBibleRepo.ts          # API.Bible (licenciadas, FUMS, atribución)
+│   ├── apiBibleRepo.ts          # API.Bible (licencias, caché, FUMS, atribución)
+│   ├── freeBibleRepo.ts         # Bible API (RVR1960, DHH, PDT)
 │   ├── search.ts                # índice FlexSearch para offline
 │   ├── books.ts                 # nombres/orden de libros (es/en)
 │   └── toSlides.ts              # pasaje → RenderSlide[]
@@ -259,15 +283,19 @@ scripts/
 
 ## 10. Roadmap por fases
 
-**Fase 1 — Base offline (PD).** `bibleRepo` + `bundledRepo` + ingesta de
+**Fase 1 — Base offline (PD). ✅** `bibleRepo` + `bundledRepo` + ingesta de
 RV1909 y KJV + `bibleSlice` + panel básico (navegar y proyectar) + referencia en
 pantalla. *(≈ 4–5 días)*
 
-**Fase 2 — Búsqueda y UX.** Índice FlexSearch, buscador instantáneo, selección
-de rango, marcadores, nombres de libros localizados. *(≈ 3 días)*
+**Fase 2 — Búsqueda y UX. 🟡** Búsqueda offline, selección
+de rango y nombres de libros localizados ya están listos; faltan marcadores e
+índice FlexSearch dedicado. *(≈ 3 días)*
 
-**Fase 3 — Versiones licenciadas.** `apiBibleRepo` (key, caché 14d, FUMS,
-atribución), bandera "premium", contratación de RVR1960/NVI. *(≈ 3–4 días)*
+**Fase 3 — Versiones licenciadas. ✅** `apiBibleRepo` con API key, caché 14d,
+búsqueda, atribución y FUMS v3 para NTV, NIV 2011 y LBLA.
+
+**Fase 3b — Proveedor gratuito. ✅** `freeBibleRepo` con RVR1960, DHH y PDT,
+búsqueda global y caché temporal.
 
 **Fase 4 — Avanzado.** Comparación en paralelo, "versículo del día", incluir
 pasajes en un *setlist* junto con canciones. *(≈ 3 días)*
@@ -278,13 +306,15 @@ Total estimado versión profesional: **~1.5–2 semanas**.
 
 ## 11. Checklist de licencias (antes de habilitar versiones con derechos)
 
-- [ ] Crear cuenta y key en API.Bible.
-- [ ] Contratar licencia comercial de cada versión moderna a habilitar (~$10/mes c/u).
-- [ ] Mostrar **atribución completa** (nombre, abreviatura, titular, enlace) en
+- [x] Crear la app y obtener su API key en API.Bible.
+- [x] Autorizar NTV, NIV 2011 y LBLA.
+- [x] Integrar FUMS v3 para las vistas de contenido y resultados de búsqueda.
+- [ ] Verificar derechos de redistribución/visualización de RVR1960, DHH y PDT;
+      Bible API no expone esa metadata.
+- [x] Mostrar **atribución** (abreviatura, copyright y enlace) en
       control y proyección.
-- [ ] Implementar **FUMS** según su guía.
-- [ ] Respetar **≤ 500 versículos consecutivos** y **caché ≤ 14 días**.
-- [ ] No persistir texto licenciado como propio (solo caché temporal).
+- [x] Aplicar **caché ≤ 14 días**.
+- [x] No persistir texto licenciado como propio (solo caché temporal).
 - [ ] Para PD: verificar que la fuente sea realmente dominio público antes de
       empaquetar.
 
@@ -303,8 +333,10 @@ Total estimado versión profesional: **~1.5–2 semanas**.
 
 ## Fuentes
 
-- [API.Bible — Fair Use](https://docs.api.bible/guides/fair-use/)
-- [API.Bible — FAQ (licencias, ~$10/mes por versión)](https://api.bible/faq)
-- [API.Bible — Términos y condiciones](https://api.bible/terms-and-conditions)
+- [API.Bible — documentación](https://docs.api.bible/)
+- [API.Bible — capítulos](https://docs.api.bible/guides/chapters/)
+- [API.Bible — Fair Use / FUMS](https://docs.api.bible/guides/fair-use/)
+- [Bible API — versiones](https://docs-bible-api.netlify.app/api/versions)
+- [Bible API — búsqueda](https://docs-bible-api.netlify.app/api/search)
 - [Get.Bible — data sets (dominio público en JSON)](https://get.bible/bible-data-sets/)
 - [wldeh/bible-api (200+ versiones)](https://github.com/wldeh/bible-api)

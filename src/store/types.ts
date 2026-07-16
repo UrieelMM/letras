@@ -7,6 +7,7 @@ import type {
   Song,
   Theme,
 } from '../types';
+import type { BibleVerse, BibleVersion } from '../bible/types';
 
 export interface Backup {
   version: 2;
@@ -39,6 +40,7 @@ export interface LibrarySlice {
   setActiveTheme: (themeId: string) => void;
   restoreFactoryThemes: () => void;
   themeForSong: (song: Song | null) => Theme;
+  themeForPresentation: () => Theme;
   updateSettings: (patch: Partial<AppSettings>) => void;
 
   exportData: () => Backup;
@@ -47,12 +49,14 @@ export interface LibrarySlice {
 
 /** Estado de presentación / proyección y selección. */
 export interface PresentationSlice {
+  workspaceTab: 'lyrics' | 'bible';
   activeSongId: string | null;
   editingSongId: string | null;
   live: LiveState;
   slides: RenderSlide[];
   liveSlideIndex: number;
 
+  setWorkspaceTab: (tab: 'lyrics' | 'bible') => void;
   setActiveSong: (id: string) => void;
   setEditingSong: (id: string | null) => void;
 
@@ -70,6 +74,27 @@ export interface PresentationSlice {
   setLive: (live: LiveState) => void;
 }
 
-export type StoreState = LibrarySlice & PresentationSlice;
+export interface BibleSlice {
+  bibleVersions: BibleVersion[];
+  bibleVersionId: string;
+  bibleBook: number;
+  bibleChapter: number;
+  bibleChapterVerses: BibleVerse[];
+  bibleSearchResults: BibleVerse[];
+  bibleSlides: RenderSlide[];
+  biblePassageLabel: string;
+  bibleLoadingChapter: boolean;
+  bibleSearching: boolean;
+  bibleError: string | null;
+
+  loadBibleVersions: () => Promise<void>;
+  setBibleVersion: (id: string) => Promise<void>;
+  openBibleChapter: (book: number, chapter: number) => Promise<void>;
+  searchBible: (query: string) => Promise<void>;
+  clearBibleSearch: () => void;
+  projectBiblePassage: (from: number, to: number) => void;
+}
+
+export type StoreState = LibrarySlice & PresentationSlice & BibleSlice;
 
 export type SliceCreator<T> = StateCreator<StoreState, [], [], T>;

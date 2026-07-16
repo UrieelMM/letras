@@ -4,6 +4,7 @@ import { buildSlides } from '../lib/slides';
 import { DEFAULT_THEMES } from '../data/seed';
 
 export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, get) => ({
+  workspaceTab: 'lyrics',
   activeSongId: null,
   editingSongId: null,
   live: {
@@ -21,18 +22,24 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
   setPublisher: (fn) => set({ _publish: fn }),
   setLive: (live) => set({ live }),
 
+  setWorkspaceTab: (workspaceTab) => {
+    const state = get();
+    const song = state.songs.find((item) => item.id === state.activeSongId) ?? null;
+    const slides = workspaceTab === 'bible' ? state.bibleSlides : song ? buildSlides(song) : [];
+    set({ workspaceTab, slides, liveSlideIndex: -1 });
+  },
+
   setActiveSong: (id) => {
     const song = get().songs.find((s) => s.id === id) ?? null;
     const slides = song ? buildSlides(song) : [];
-    set({ activeSongId: id, slides });
+    set({ activeSongId: id, slides, workspaceTab: 'lyrics', liveSlideIndex: -1 });
   },
 
   setEditingSong: (id) => set({ editingSongId: id }),
 
   goLive: (slideIndex) => {
-    const { slides, activeSongId, songs } = get();
-    const song = songs.find((s) => s.id === activeSongId) ?? null;
-    const theme = get().themeForSong(song);
+    const { slides } = get();
+    const theme = get().themeForPresentation();
     const slide = slides[slideIndex] ?? null;
     const live: LiveState = {
       slide,

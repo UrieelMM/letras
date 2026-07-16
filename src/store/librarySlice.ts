@@ -112,6 +112,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
       setlists,
       settings,
       activeSongId: null,
+      workspaceTab: 'lyrics',
       slides: [],
       liveSlideIndex: -1,
       live: {
@@ -150,8 +151,11 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
       setlists: [],
       activeSongId: null,
       editingSongId: null,
+      workspaceTab: 'lyrics',
       slides: [],
       liveSlideIndex: -1,
+      bibleSlides: [],
+      biblePassageLabel: '',
     });
   },
 
@@ -160,6 +164,17 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
     const { themes, settings } = get();
     const id = song?.themeId ?? settings.defaultThemeId;
     return themes.find((t) => t.id === id) ?? themes[0];
+  },
+
+  themeForPresentation: () => {
+    const { workspaceTab, activeSongId, songs, settings, themes } = get();
+    if (workspaceTab === 'bible') {
+      if (settings.bibleTheme) return settings.bibleTheme;
+      const id = settings.bibleThemeId ?? settings.defaultThemeId;
+      return themes.find((theme) => theme.id === id) ?? themes[0];
+    }
+    const song = songs.find((item) => item.id === activeSongId) ?? null;
+    return get().themeForSong(song);
   },
 
   saveSong: (song) => {
@@ -211,8 +226,16 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
   },
 
   customizeTheme: (theme) => {
-    const { activeSongId, songs, live, liveSlideIndex } = get();
-    if (activeSongId) {
+    const { activeSongId, songs, live, liveSlideIndex, workspaceTab } = get();
+    if (workspaceTab === 'bible') {
+      const settings = {
+        ...get().settings,
+        bibleThemeId: theme.id,
+        bibleTheme: theme,
+      };
+      set({ settings });
+      repo.saveSettings(settings).catch(console.error);
+    } else if (activeSongId) {
       const song = songs.find((s) => s.id === activeSongId);
       if (song) {
         const updated = { ...song, theme, updatedAt: Date.now() };
@@ -227,12 +250,20 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
   },
 
   setActiveTheme: (themeId) => {
-    const { activeSongId, songs, themes, settings, live, liveSlideIndex } = get();
+    const { activeSongId, songs, themes, settings, live, liveSlideIndex, workspaceTab } = get();
     const preset = themes.find((t) => t.id === themeId);
     if (!preset) return;
     const fresh = cloneTheme(preset);
 
-    if (activeSongId) {
+    if (workspaceTab === 'bible') {
+      const newSettings = {
+        ...settings,
+        bibleThemeId: themeId,
+        bibleTheme: fresh,
+      };
+      set({ settings: newSettings });
+      repo.saveSettings(newSettings).catch(console.error);
+    } else if (activeSongId) {
       const song = songs.find((s) => s.id === activeSongId);
       if (song) {
         const updated = { ...song, themeId, theme: fresh, updatedAt: Date.now() };

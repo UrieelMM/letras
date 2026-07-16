@@ -227,11 +227,13 @@ export function ThemePanel() {
   const themes = useStore((s) => s.themes);
   const songs = useStore((s) => s.songs);
   const activeSongId = useStore((s) => s.activeSongId);
+  const workspaceTab = useStore((s) => s.workspaceTab);
+  const slides = useStore((s) => s.slides);
   const customizeTheme = useStore((s) => s.customizeTheme);
   const saveTheme = useStore((s) => s.saveTheme);
   const setActiveTheme = useStore((s) => s.setActiveTheme);
   const restoreFactoryThemes = useStore((s) => s.restoreFactoryThemes);
-  const themeForSong = useStore((s) => s.themeForSong);
+  const themeForPresentation = useStore((s) => s.themeForPresentation);
   const visibleThemes = themes.filter((t) => !REMOVED_THEME_IDS.has(t.id));
   const normalizedThemeSearch = themeSearch
     .trim()
@@ -249,19 +251,22 @@ export function ThemePanel() {
     : visibleThemes;
 
   const song = songs.find((s) => s.id === activeSongId) ?? null;
-  const theme = themeForSong(song);
+  const theme = themeForPresentation();
 
-  const sampleSlide: RenderSlide = {
+  const fallbackSlide: RenderSlide = {
     id: 'sample',
     blockId: 'sample',
     type: 'verse',
-    lines: song?.blocks[0]?.lines.slice(0, theme.maxLinesPerSlide) ?? [
+    lines: workspaceTab === 'lyrics' && song?.blocks[0]
+      ? song.blocks[0].lines.slice(0, theme.maxLinesPerSlide)
+      : [
       'Texto de ejemplo',
       'para previsualizar el tema',
     ],
     partIndex: 0,
     partCount: 1,
   };
+  const sampleSlide = workspaceTab === 'bible' && slides[0] ? slides[0] : fallbackSlide;
   const previewLive: LiveState = {
     slide: sampleSlide,
     theme,
@@ -298,7 +303,7 @@ export function ThemePanel() {
       };
       customizeTheme(uploadedTheme);
       // Sin una canción activa, la personalización pertenece al tema seleccionado.
-      if (!activeSongId) saveTheme(uploadedTheme);
+      if (workspaceTab === 'lyrics' && !activeSongId) saveTheme(uploadedTheme);
       toast.success('Imagen subida y guardada en el tema.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo subir la imagen.';
@@ -557,6 +562,56 @@ export function ThemePanel() {
           value={theme.vAlign}
           onChange={(v) => update({ vAlign: v as Theme['vAlign'] })}
         />
+        <div className="rounded-xl border border-white/5 bg-white/[0.025] p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-medium text-white/80">Referencia bíblica</div>
+              <div className="mt-0.5 text-[10px] text-white/35">Sólo aparece en pasajes de la Biblia</div>
+            </div>
+            <Toggle
+              label="Mostrar"
+              checked={theme.reference?.show !== false}
+              onChange={(show) => update({
+                reference: {
+                  show,
+                  position: theme.reference?.position ?? 'bottom',
+                  sizeVw: theme.reference?.sizeVw ?? 1.25,
+                },
+              })}
+            />
+          </div>
+          <div className="space-y-3">
+            <Segmented
+              label="Posición"
+              options={[
+                { value: 'top', label: 'Arriba' },
+                { value: 'bottom', label: 'Abajo' },
+              ]}
+              value={theme.reference?.position ?? 'bottom'}
+              onChange={(position) => update({
+                reference: {
+                  show: theme.reference?.show !== false,
+                  position: position as 'top' | 'bottom',
+                  sizeVw: theme.reference?.sizeVw ?? 1.25,
+                },
+              })}
+            />
+            <Range
+              label={`Tamaño de referencia (${(theme.reference?.sizeVw ?? 1.25).toFixed(2)})`}
+              min={0.7}
+              max={2.5}
+              step={0.05}
+              value={theme.reference?.sizeVw ?? 1.25}
+              onChange={(sizeVw) => update({
+                reference: {
+                  show: theme.reference?.show !== false,
+                  position: theme.reference?.position ?? 'bottom',
+                  sizeVw,
+                },
+              })}
+            />
+          </div>
+        </div>
       </section>
 
       {/* Animación */}

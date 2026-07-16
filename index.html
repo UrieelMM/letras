@@ -9,6 +9,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.fumsData = window.fumsData || [];
+      window.fums = window.fums || function () {
+        window.fumsData.push(arguments);
+      };
+    </script>
+    <script async src="https://pkg.api.bible/fumsV3.min.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

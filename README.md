@@ -4,6 +4,29 @@
 > Wordship Screen con animaciones profesionales, fondos de imagen y fondos animados propios, todo personalizable.
 > Persistencia inicial en **localStorage** (migrable a base de datos más adelante).
 
+La vista de control incluye pestañas para **Letras** y **Biblia**. La Biblia
+incorpora RV1909 y KJV para uso offline; NTV, NIV 2011 y LBLA mediante API.Bible;
+y RVR1960, DHH y PDT mediante Bible API. La navegación, búsqueda, rangos y
+referencias reutilizan los mismos temas, fondos y animaciones de las canciones.
+
+Para habilitar las versiones de API.Bible, crea una aplicación en
+[API.Bible](https://scripture.api.bible/), añade las Biblias a tu plan y coloca
+su API key en `.env`. Por compatibilidad se conserva el nombre anterior:
+
+```env
+VITE_YOUVERSION_APP_KEY=tu_app_key
+```
+
+Las versiones en línea requieren internet la primera vez que se abre cada
+capítulo; después se usa una caché local temporal de hasta 14 días. La búsqueda
+global funciona en ambos proveedores online y en las versiones offline. La
+integración reporta FUMS v3 para el contenido servido por API.Bible.
+
+RVR1960, DHH y PDT no requieren llave y se consumen desde
+[`bible-api.deno.dev`](https://docs-bible-api.netlify.app/api/versions). Esta API
+está en desarrollo y no entrega metadata de copyright, por lo que conviene
+verificar por separado los derechos de cada traducción antes de distribución pública.
+
 ---
 
 ## 1. Resumen ejecutivo
@@ -97,12 +120,12 @@ Veredicto: **Motion (transiciones) + GSAP (efectos) + Three.js/tsParticles (fond
 │  • Selector de tema      │         │   ╚══════════════════╝   │
 └─────────────────────────┘         └─────────────────────────┘
         getScreenDetails() posiciona la ventana de proyección
-        automáticamente a pantalla completa en el proyector.
+        automáticamente en el proyector.
 ```
 
 - La **ventana de control** mantiene el estado maestro (canción activa, índice de slide, tema, blackout).
 - Cada cambio se publica por **BroadcastChannel** (`{type, payload}`); la ventana de proyección sólo *escucha y renderiza*.
-- Con **Window Management API** la app detecta pantallas y abre la proyección directamente en el proyector a pantalla completa. Sin esa API, se abre una ventana emergente que el operador arrastra y pone en fullscreen.
+- Con **Window Management API** la app detecta pantallas y abre la proyección directamente en el proyector. Un clic, doble clic o la tecla `F` dentro de esa salida activa pantalla completa. Sin esa API, se abre una ventana emergente que el operador arrastra al proyector.
 - Estados clave sincronizados: `SLIDE_CHANGE`, `THEME_CHANGE`, `BLACKOUT`, `LOGO`, `CLEAR`, `BACKGROUND_CHANGE`.
 
 ### 5.2 Estructura de carpetas propuesta
@@ -353,7 +376,25 @@ incluida una imagen — para darle más dinamismo, y un selector de **tipografí
 cargadas dinámicamente desde Google Fonts** (Poppins, Bebas Neue, Pacifico,
 Anton, Fredoka, Playfair Display, etc.) con opción de **letras arcoíris**.
 
-Navegador recomendado: **Chrome o Edge** (para Window Management API). La app se servirá en `/control` (operador) y abrirá `/output` en el proyector.
+Navegador recomendado: **Chrome o Edge** (para Window Management API). El dashboard del operador abre una salida independiente en `#/output` para el proyector.
+
+### Operación con HDMI
+
+1. Conecta el proyector y configura el sistema operativo en **Extender**, nunca
+   en Duplicar/Espejo. El dashboard debe permanecer en la laptop.
+2. Abre la app en Chrome o Edge y pulsa **Abrir proyección**. La primera vez,
+   acepta el permiso del sitio para administrar ventanas.
+3. La salida se colocará en la pantalla externa. Dentro de ella, pulsa
+   **Pantalla completa**, presiona `F` o haz doble clic. `Esc` permite salir.
+4. Regresa al dashboard. El indicador verde confirma que la salida está
+   conectada y muestra la resolución real que recibe el proyector.
+5. Si el navegador no permite la colocación automática, arrastra la ventana al
+   proyector y usa `F` o `F11`; las letras, Biblia, temas y controles seguirán
+   sincronizados.
+
+La proyección es responsiva y utiliza todo el viewport, por lo que funciona con
+salidas Full HD, 2K y 4K. La resolución y frecuencia finales deben configurarse
+en el sistema operativo según lo que acepte la entrada HDMI del proyector.
 
 ---
 

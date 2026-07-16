@@ -105,6 +105,13 @@ function originFor(align: string, vAlign: string): string {
 export function SlideStage({ live, scale = 1 }: Props) {
   const { theme, slide, blackout, showLogo, logoUrl, clearText } = live;
   const t = theme.transition;
+  const referenceStyle = theme.reference ?? { show: true, position: 'bottom' as const, sizeVw: 1.25 };
+  const showReference = Boolean(slide?.reference && referenceStyle.show);
+  const textPadding = showReference
+    ? referenceStyle.position === 'top'
+      ? `${11 * scale}% ${6 * scale}% ${6 * scale}%`
+      : `${6 * scale}% ${6 * scale}% ${11 * scale}%`
+    : `${6 * scale}%`;
 
   // Carga la tipografia del tema desde Google Fonts (en esta ventana).
   useEffect(() => {
@@ -232,7 +239,7 @@ export function SlideStage({ live, scale = 1 }: Props) {
 
       {/* Texto del slide */}
       {!blackout && !showLogo && !clearText && (
-        <div className="absolute inset-0" style={{ padding: `${6 * scale}%` }}>
+        <div className="absolute inset-0" style={{ padding: textPadding }}>
           <div
             ref={fitContainerRef}
             className="flex h-full w-full"
@@ -283,6 +290,39 @@ export function SlideStage({ live, scale = 1 }: Props) {
             </AnimatePresence>
           </div>
         </div>
+      )}
+
+      {/* Referencia bíblica; las letras no generan este slot. */}
+      {!blackout && !showLogo && !clearText && showReference && slide && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`reference-${slide.id}`}
+            initial={{ opacity: 0, y: referenceStyle.position === 'bottom' ? 8 : -8 }}
+            animate={{ opacity: 0.82, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="absolute z-10 max-w-[72%] text-right"
+            style={{
+              right: `${6 * scale}%`,
+              [referenceStyle.position]: `${4 * scale}%`,
+              fontFamily: `'${theme.font.family}', system-ui, sans-serif`,
+              color: theme.color.text,
+              textShadow: theme.color.shadow ? '0 2px 16px rgba(0,0,0,.6)' : undefined,
+            }}
+          >
+            <div
+              className="font-semibold tracking-wide"
+              style={{ fontSize: `${referenceStyle.sizeVw * scale}vw` }}
+            >
+              {slide.reference}
+            </div>
+            {slide.attribution && (
+              <div className="mt-1 opacity-65" style={{ fontSize: `${0.64 * scale}vw` }}>
+                {slide.attribution}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       )}
     </div>
   );

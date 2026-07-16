@@ -1,0 +1,9 @@
+{
+  "id": "kjv",
+  "translation": "King James Version (1769)",
+  "abbreviation": "kjv",
+  "language": "English",
+  "source": "https://github.com/farskipper/kjv",
+  "license": "Public Domain (Unlicense)",
+  "books": 66
+}
