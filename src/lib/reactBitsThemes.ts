@@ -39,6 +39,16 @@ export const REACT_BITS_THEME_IDS = new Set([
   'theme-twilight-lines',
   'theme-chroma-blinds',
   'theme-glass-tiles',
+  'theme-pinata-cosmica',
+  'theme-turbo-arcoiris',
+  'theme-portal-dulce',
+  'theme-gelatina-disco',
+  'theme-lluvia-laser',
+  'theme-orbita-confeti',
+  'theme-fiesta-cristal',
+  'theme-limonada-pop',
+  'theme-cohete-retro',
+  'theme-fuegos-gloria',
 ]);
 
 export const REACT_BITS_PRESETS = new Set<AnimatedBgPreset>([
