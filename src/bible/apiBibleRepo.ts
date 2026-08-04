@@ -1,4 +1,5 @@
 import { BIBLE_BOOKS, bibleBook } from './books';
+import { remoteServiceErrorMessage } from '../lib/userFacingError';
 import type { BibleRepo, BibleVerse, BibleVersion } from './types';
 
 const API_BASE = 'https://rest.api.bible/v1';
@@ -199,7 +200,7 @@ async function requestApiBible<T>(path: string): Promise<ApiBibleResponse<T>> {
       },
     });
   } catch {
-    throw new Error('No se pudo conectar con API.Bible. Revisa la conexión a internet.');
+    throw new Error(remoteServiceErrorMessage('API.Bible'));
   }
   if (!response.ok) throw apiError(response.status);
   return response.json() as Promise<ApiBibleResponse<T>>;

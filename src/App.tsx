@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ControlView } from './components/control/ControlView';
 import { OutputView } from './components/output/OutputView';
@@ -9,6 +9,7 @@ import { toast } from './store/toastStore';
 import { Toaster } from './components/Toaster';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { createChannel } from './sync/channel';
+import { libraryLoadErrorMessage } from './lib/userFacingError';
 import appLogo from './assets/3.png';
 
 function Splash({ label }: { label: string }) {
@@ -41,6 +42,36 @@ function ConfigNeeded() {
   );
 }
 
+function LibraryLoadFailure({
+  message,
+  onRetry,
+  onSignOut,
+}: {
+  message: string;
+  onRetry: () => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <div className="grid min-h-screen place-items-center bg-ink-900 p-6 text-white">
+      <div className="glass max-w-lg rounded-2xl p-7 text-center">
+        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-red-400/10 text-xl text-red-200">
+          !
+        </div>
+        <h1 className="mb-2 text-lg font-bold">No se pudo abrir tu biblioteca</h1>
+        <p className="text-sm leading-relaxed text-white/60">{message}</p>
+        <div className="mt-6 flex justify-center gap-2">
+          <button className="btn-accent" onClick={onRetry}>
+            Reintentar
+          </button>
+          <button className="btn-ghost" onClick={onSignOut}>
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Ventana de control: conecta el store con el canal de sincronización. */
 function ControlRoute() {
   const setPublisher = useStore((s) => s.setPublisher);
@@ -64,26 +95,51 @@ function ControlRoute() {
 
 /** Ruta protegida: requiere sesión y carga los datos del usuario. */
 function ControlGate() {
-  const { user, loading, configured } = useAuthStore();
+  const { user, loading, configured, signOutUser } = useAuthStore();
   const ready = useStore((s) => s.ready);
   const init = useStore((s) => s.init);
   const reset = useStore((s) => s.reset);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
 
   useEffect(() => {
     if (!configured || loading) return;
     if (!user) {
       reset();
+      setLoadError(null);
       return;
     }
-    init(user.uid).catch((e) => {
-      console.error(e);
-      toast.error('No se pudo cargar tu biblioteca. Revisa tu conexión.');
+    let active = true;
+    setLoadError(null);
+    init(user.uid).catch((error) => {
+      if (!active) return;
+      console.error(error);
+      const message = libraryLoadErrorMessage(error);
+      setLoadError(message);
+      toast.error(message);
     });
-  }, [user, loading, configured, init, reset]);
+    return () => {
+      active = false;
+    };
+  }, [user, loading, configured, init, reset, retryAttempt]);
 
   if (!configured) return <ConfigNeeded />;
   if (loading) return <Splash label="Cargando..." />;
   if (!user) return <LoginScreen />;
+  if (loadError) {
+    return (
+      <LibraryLoadFailure
+        message={loadError}
+        onRetry={() => setRetryAttempt((attempt) => attempt + 1)}
+        onSignOut={() => {
+          void signOutUser().catch((error) => {
+            console.error(error);
+            toast.error('No se pudo cerrar la sesión. Vuelve a intentarlo.');
+          });
+        }}
+      />
+    );
+  }
   if (!ready) return <Splash label="Preparando tu biblioteca..." />;
   return <ControlRoute />;
 }

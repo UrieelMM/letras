@@ -23,7 +23,8 @@ const noopRepo: DataRepo = {
 // Estado de módulo: repositorio activo + suscripción en tiempo real.
 let repo: DataRepo = noopRepo;
 let unsubscribe: (() => void) | null = null;
-let initToken: string | null = null; // evita inicializaciones duplicadas (StrictMode)
+let initGeneration = 0;
+let initRequest: { userId: string; promise: Promise<void> } | null = null;
 
 export const PLACEHOLDER_SETTINGS: AppSettings = {
   defaultThemeId: DEFAULT_THEMES[0].id,
@@ -47,98 +48,118 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
   setlists: [],
   settings: PLACEHOLDER_SETTINGS,
 
-  init: async (userId) => {
+  init: (userId) => {
     const s = get();
-    if (initToken === userId) return;
-    if (s.ready && s.userId === userId) return;
-    initToken = userId;
+    if (s.ready && s.userId === userId) return Promise.resolve();
+    if (initRequest?.userId === userId) return initRequest.promise;
+
+    const generation = ++initGeneration;
 
     if (unsubscribe) {
       unsubscribe();
       unsubscribe = null;
     }
     set({ ready: false, userId });
-    repo = createFirestoreRepo(userId);
 
-    let [songs, themes, setlists, settings] = await Promise.all([
-      repo.loadSongs(),
-      repo.loadThemes(),
-      repo.loadSetlists(),
-      repo.loadSettings(),
-    ]);
+    const promise = (async () => {
+      const activeRepo = createFirestoreRepo(userId);
+      repo = activeRepo;
+      let [songs, themes, setlists, settings] = await Promise.all([
+        activeRepo.loadSongs(),
+        activeRepo.loadThemes(),
+        activeRepo.loadSetlists(),
+        activeRepo.loadSettings(),
+      ]);
 
-    // Limpieza: elimina temas retirados (emojis pesados + efectos descartados).
-    const toRemove = themes.filter(
-      (t) => t.overlay?.preset === 'emojis' || REMOVED_THEME_IDS.has(t.id),
-    );
-    if (toRemove.length) {
-      const removeIds = new Set(toRemove.map((t) => t.id));
-      themes = themes.filter((t) => !removeIds.has(t.id));
-      await Promise.all(toRemove.map((t) => repo.deleteTheme(t.id).catch(() => {})));
-    }
+      // Limpieza: elimina temas retirados (emojis pesados + efectos descartados).
+      const toRemove = themes.filter(
+        (t) => t.overlay?.preset === 'emojis' || REMOVED_THEME_IDS.has(t.id),
+      );
+      if (toRemove.length) {
+        const removeIds = new Set(toRemove.map((t) => t.id));
+        themes = themes.filter((t) => !removeIds.has(t.id));
+        await Promise.all(toRemove.map((t) => activeRepo.deleteTheme(t.id).catch(() => {})));
+      }
 
-    // Asegura que los temas de fábrica (incluidos los nuevos) estén presentes.
-    const missingThemes = DEFAULT_THEMES.filter((d) => !themes.some((t) => t.id === d.id));
-    if (missingThemes.length) {
-      themes = [...themes, ...missingThemes];
-      await Promise.all(missingThemes.map((t) => repo.saveTheme(t).catch(() => {})));
-    }
+      // Asegura que los temas de fábrica (incluidos los nuevos) estén presentes.
+      const missingThemes = DEFAULT_THEMES.filter((d) => !themes.some((t) => t.id === d.id));
+      if (missingThemes.length) {
+        themes = [...themes, ...missingThemes];
+        await Promise.all(missingThemes.map((t) => activeRepo.saveTheme(t).catch(() => {})));
+      }
 
-    // Retira las dos canciones de demostración antiguas de bibliotecas ya creadas.
-    const removedSampleSongs = songs.filter((song) => REMOVED_SAMPLE_SONG_IDS.has(song.id));
-    if (removedSampleSongs.length) {
-      songs = songs.filter((song) => !REMOVED_SAMPLE_SONG_IDS.has(song.id));
-      await Promise.all(removedSampleSongs.map((song) => repo.deleteSong(song.id).catch(() => {})));
-    }
-    if (songs.length === 0) {
-      songs = SAMPLE_SONGS;
-      await Promise.all(songs.map((sg) => repo.saveSong(sg).catch(() => {})));
-    } else if (!songs.some((song) => song.id.startsWith('songbook-'))) {
-      // Importación inicial del cancionero para bibliotecas existentes.
-      const songbookSongs = SAMPLE_SONGS.filter((song) => song.id.startsWith('songbook-'));
-      songs = [...songs, ...songbookSongs];
-      await Promise.all(songbookSongs.map((song) => repo.saveSong(song).catch(() => {})));
-    }
-    if (!settings) {
-      settings = { defaultThemeId: themes[0].id, language: 'es' };
-      await repo.saveSettings(settings).catch(() => {});
-    }
+      // Retira las dos canciones de demostración antiguas de bibliotecas ya creadas.
+      const removedSampleSongs = songs.filter((song) => REMOVED_SAMPLE_SONG_IDS.has(song.id));
+      if (removedSampleSongs.length) {
+        songs = songs.filter((song) => !REMOVED_SAMPLE_SONG_IDS.has(song.id));
+        await Promise.all(
+          removedSampleSongs.map((song) => activeRepo.deleteSong(song.id).catch(() => {})),
+        );
+      }
+      if (songs.length === 0) {
+        songs = SAMPLE_SONGS;
+        await Promise.all(songs.map((song) => activeRepo.saveSong(song).catch(() => {})));
+      } else if (!songs.some((song) => song.id.startsWith('songbook-'))) {
+        // Importación inicial del cancionero para bibliotecas existentes.
+        const songbookSongs = SAMPLE_SONGS.filter((song) => song.id.startsWith('songbook-'));
+        songs = [...songs, ...songbookSongs];
+        await Promise.all(
+          songbookSongs.map((song) => activeRepo.saveSong(song).catch(() => {})),
+        );
+      }
+      if (!settings) {
+        settings = { defaultThemeId: themes[0].id, language: 'es' };
+        await activeRepo.saveSettings(settings).catch(() => {});
+      }
 
-    const defaultTheme = themes.find((t) => t.id === settings!.defaultThemeId) ?? themes[0];
+      const defaultTheme = themes.find((t) => t.id === settings!.defaultThemeId) ?? themes[0];
 
-    set({
-      songs,
-      themes,
-      setlists,
-      settings,
-      activeSongId: null,
-      workspaceTab: 'lyrics',
-      slides: [],
-      liveSlideIndex: -1,
-      live: {
-        slide: null,
-        theme: defaultTheme,
-        blackout: false,
-        showLogo: false,
-        logoUrl: settings.logoUrl,
-        clearText: false,
-      },
-      ready: true,
-    });
+      // La sesión pudo cambiar mientras Firestore respondía; ignora una carga obsoleta.
+      if (generation !== initGeneration) return;
 
-    if (repo.subscribe) {
-      unsubscribe = repo.subscribe((snap) => {
-        set((st) => ({
-          songs: snap.songs ?? st.songs,
-          themes: snap.themes ?? st.themes,
-          setlists: snap.setlists ?? st.setlists,
-        }));
+      set({
+        songs,
+        themes,
+        setlists,
+        settings,
+        activeSongId: null,
+        workspaceTab: 'lyrics',
+        slides: [],
+        liveSlideIndex: -1,
+        live: {
+          slide: null,
+          theme: defaultTheme,
+          blackout: false,
+          showLogo: false,
+          logoUrl: settings.logoUrl,
+          clearText: false,
+        },
+        ready: true,
       });
-    }
+
+      if (activeRepo.subscribe) {
+        unsubscribe = activeRepo.subscribe((snap) => {
+          if (generation !== initGeneration) return;
+          set((st) => ({
+            songs: snap.songs ?? st.songs,
+            themes: snap.themes ?? st.themes,
+            setlists: snap.setlists ?? st.setlists,
+          }));
+        });
+      }
+    })();
+
+    initRequest = { userId, promise };
+    const clearRequest = () => {
+      if (initRequest?.promise === promise) initRequest = null;
+    };
+    void promise.then(clearRequest, clearRequest);
+    return promise;
   },
 
   reset: () => {
-    initToken = null;
+    initGeneration += 1;
+    initRequest = null;
     if (unsubscribe) {
       unsubscribe();
       unsubscribe = null;

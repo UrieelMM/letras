@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from '../../store/toastStore';
+import { remoteServiceErrorMessage } from '../../lib/userFacingError';
 import MetallicSwirl from '../metallic-swirl';
 import loginLogo from '../../assets/2.png';
 
@@ -332,7 +333,7 @@ function friendlyError(err: unknown): string {
     case 'auth/cancelled-popup-request':
       return 'Ya hay una ventana de acceso abierta. Complétala o ciérrala antes de intentarlo otra vez.';
     case 'auth/network-request-failed':
-      return 'No se pudo conectar con Google. Revisa la conexión e inténtalo otra vez.';
+      return remoteServiceErrorMessage('Firebase Authentication');
     case 'auth/account-exists-with-different-credential':
       return 'Ya existe una cuenta con ese correo usando otro método de acceso.';
     case 'auth/api-key-not-valid':

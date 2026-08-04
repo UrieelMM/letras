@@ -1,4 +1,5 @@
 import { BIBLE_BOOKS, bibleBook } from './books';
+import { remoteServiceErrorMessage } from '../lib/userFacingError';
 import type { BibleRepo, BibleVerse, BibleVersion } from './types';
 
 const API_BASE = 'https://bible-api.deno.dev/api';
@@ -154,7 +155,7 @@ async function requestFreeBible<T>(path: string): Promise<T> {
   try {
     response = await fetch(`${API_BASE}${path}`, { headers: { Accept: 'application/json' } });
   } catch {
-    throw new Error('No se pudo conectar con Bible API. Revisa la conexión a internet.');
+    throw new Error(remoteServiceErrorMessage('Bible API'));
   }
   if (response.status === 404) throw new Error('Bible API no encontró el pasaje solicitado.');
   if (!response.ok) throw new Error(`Bible API no pudo responder (HTTP ${response.status}).`);
