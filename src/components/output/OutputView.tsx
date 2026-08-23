@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { createChannel } from '../../sync/channel';
+import {
+  announceOutputWindow,
+  isOutputFullscreenRequest,
+} from '../../sync/screens';
 import { SlideStage } from '../SlideStage';
+
+interface ScreenTargetFullscreenOptions extends FullscreenOptions {
+  screen?: unknown;
+}
 
 /**
  * Ventana de proyección (lo que ve el público).
@@ -13,31 +21,55 @@ export function OutputView() {
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
   const [fullscreenError, setFullscreenError] = useState('');
 
-  const toggleFullscreen = useCallback(async () => {
+  const enterFullscreen = useCallback(async () => {
     setFullscreenError('');
 
+    if (document.fullscreenElement) return true;
+
+    if (!document.fullscreenEnabled) {
+      setFullscreenError('El navegador no permite pantalla completa en esta ventana. Usa F11.');
+      return false;
+    }
+
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-        return;
+      const options: ScreenTargetFullscreenOptions = { navigationUI: 'hide' };
+
+      // En Windows, especificar la pantalla evita que Chromium elija la
+      // principal cuando el popup está en un monitor/proyector secundario.
+      if (typeof window.getScreenDetails === 'function') {
+        try {
+          const details = await window.getScreenDetails();
+          options.screen = details.currentScreen;
+        } catch {
+          // El Fullscreen API estándar sigue funcionando sin este permiso.
+        }
       }
 
-      if (!document.fullscreenEnabled) {
-        setFullscreenError('El navegador no permite pantalla completa en esta ventana.');
-        return;
-      }
-
-      await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-    } catch {
-      setFullscreenError('El navegador rechazó el modo. Prueba F11 o revisa el permiso.');
+      await document.documentElement.requestFullscreen(options);
+      return true;
+    } catch (error) {
+      console.error('No se pudo activar pantalla completa:', error);
+      setFullscreenError(
+        'Chrome u Opera bloqueó la solicitud. Haz clic en este botón dentro de la proyección o usa F11.',
+      );
+      return false;
     }
   }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await enterFullscreen();
+  }, [enterFullscreen]);
 
   useEffect(() => {
     document.title = 'Wordship Screen — Proyección';
     const channel = createChannel();
 
     const postStatus = (ready = true) => {
+      announceOutputWindow();
       channel.post({
         type: 'OUTPUT_STATUS',
         payload: {
@@ -81,6 +113,16 @@ export function OutputView() {
   }, [setLive]);
 
   useEffect(() => {
+    const handleControlMessage = (event: MessageEvent) => {
+      if (!isOutputFullscreenRequest(event)) return;
+      void enterFullscreen();
+    };
+
+    window.addEventListener('message', handleControlMessage);
+    return () => window.removeEventListener('message', handleControlMessage);
+  }, [enterFullscreen]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'f') return;
       event.preventDefault();
@@ -121,7 +163,7 @@ export function OutputView() {
             Pantalla completa (F)
           </button>
           <p className="mt-2 text-[10px] leading-relaxed text-white/45">
-            También puedes hacer doble clic. Esc sale de pantalla completa.
+            También puedes presionar F o hacer doble clic aquí. Esc sale de pantalla completa.
           </p>
           {fullscreenError && (
             <p className="mt-2 text-[10px] leading-relaxed text-amber-300">

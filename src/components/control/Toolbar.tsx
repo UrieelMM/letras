@@ -4,8 +4,11 @@ import { useAuthStore } from '../../store/authStore';
 import { toast } from '../../store/toastStore';
 import {
   openOutputWindow,
+  captureOutputWindow,
+  focusOutputWindow,
   hasExtendedDisplay,
   hasMultiScreenSupport,
+  requestOutputFullscreen,
 } from '../../sync/screens';
 import { createChannel } from '../../sync/channel';
 import type { OutputStatus } from '../../types';
@@ -60,16 +63,30 @@ export function Toolbar() {
       }
     };
 
+    const handleOutputWindowMessage = (event: MessageEvent) => {
+      captureOutputWindow(event);
+    };
+
+    window.addEventListener('message', handleOutputWindowMessage);
     requestStatus();
     const interval = window.setInterval(requestStatus, 2500);
     return () => {
       window.clearInterval(interval);
+      window.removeEventListener('message', handleOutputWindowMessage);
       unsub();
       channel.close();
     };
   }, []);
 
   async function handleOpenOutput() {
+    if (outputStatus && !outputStatus.fullscreen && requestOutputFullscreen()) {
+      return;
+    }
+
+    if (outputStatus?.fullscreen && focusOutputWindow()) {
+      return;
+    }
+
     setOpeningOutput(true);
     try {
       const result = await openOutputWindow();
@@ -81,7 +98,7 @@ export function Toolbar() {
       }
 
       if (result.placement === 'external') {
-        toast.success(`Proyección enviada a ${result.displayName}. Presiona F en esa ventana.`);
+        toast.success(`Proyección enviada a ${result.displayName}. Presiona F para completar.`);
         return;
       }
 
@@ -90,7 +107,7 @@ export function Toolbar() {
       } else if (result.reason === 'permission-denied') {
         toast.info('La salida está abierta. Autoriza administrar ventanas o muévela al proyector.');
       } else {
-        toast.info('La salida está abierta. Muévela al proyector y presiona F.');
+        toast.info('La salida está abierta. Muévela al proyector y vuelve a presionar F.');
       }
     } finally {
       setOpeningOutput(false);
@@ -255,7 +272,9 @@ export function Toolbar() {
           {openingOutput
             ? 'Detectando pantalla…'
             : outputStatus
-              ? 'Enfocar proyección'
+              ? outputStatus.fullscreen
+                ? 'Enfocar proyección'
+                : 'Pantalla completa'
               : 'Abrir proyección'}
         </button>
 

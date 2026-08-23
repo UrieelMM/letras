@@ -7,6 +7,7 @@ import { LivePreview } from './LivePreview';
 import { ThemePanel } from './ThemePanel';
 import { SongEditor } from './SongEditor';
 import { BiblePanel } from './BiblePanel';
+import { requestOutputFullscreen } from '../../sync/screens';
 
 export function ControlView() {
   const editingSongId = useStore((s) => s.editingSongId);
@@ -46,6 +47,10 @@ export function ControlView() {
         case 'l':
         case 'L':
           toggleLogo();
+          break;
+        case 'f':
+        case 'F':
+          if (requestOutputFullscreen()) e.preventDefault();
           break;
       }
     }

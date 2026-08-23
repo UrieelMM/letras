@@ -25,6 +25,11 @@ interface ExtendedScreen extends Screen {
   isExtended?: boolean;
 }
 
+interface DelegatedPostMessageOptions extends WindowPostMessageOptions {
+  /** Chromium 104+: transfiere el gesto del usuario a la ventana de salida. */
+  delegate: 'fullscreen';
+}
+
 declare global {
   interface Window {
     getScreenDetails?: () => Promise<ScreenDetailsLike>;
@@ -41,6 +46,9 @@ export interface OpenOutputResult {
 }
 
 const OUTPUT_WINDOW_NAME = 'wordship-screen-output';
+const OUTPUT_READY_MESSAGE = 'WORDSHIP_OUTPUT_READY';
+const REQUEST_FULLSCREEN_MESSAGE = 'WORDSHIP_REQUEST_FULLSCREEN';
+let outputWindowRef: Window | null = null;
 const FALLBACK_FEATURES = [
   'popup=yes',
   'width=1280',
@@ -83,6 +91,76 @@ function placeWindowOnScreen(output: Window, screen: ScreenLike): void {
   output.focus();
 }
 
+function rememberOutputWindow(output: Window): Window {
+  outputWindowRef = output;
+  return output;
+}
+
+function getOpenOutputWindow(): Window | null {
+  try {
+    return outputWindowRef && !outputWindowRef.closed ? outputWindowRef : null;
+  } catch {
+    outputWindowRef = null;
+    return null;
+  }
+}
+
+/**
+ * La salida anuncia su WindowProxy junto con cada estado. Así el dashboard
+ * recupera la referencia incluso después de recargarse mientras el popup
+ * continúa abierto.
+ */
+export function announceOutputWindow(): void {
+  window.opener?.postMessage({ type: OUTPUT_READY_MESSAGE }, location.origin);
+}
+
+export function captureOutputWindow(event: MessageEvent): boolean {
+  if (
+    event.origin !== location.origin ||
+    event.data?.type !== OUTPUT_READY_MESSAGE ||
+    !event.source ||
+    !('focus' in event.source)
+  ) {
+    return false;
+  }
+
+  outputWindowRef = event.source as Window;
+  return true;
+}
+
+export function isOutputFullscreenRequest(event: MessageEvent): boolean {
+  return event.origin === location.origin && event.data?.type === REQUEST_FULLSCREEN_MESSAGE;
+}
+
+/**
+ * Chromium permite delegar la activación de un clic/tecla a otro WindowProxy.
+ * En navegadores que ignoran `delegate`, el mensaje todavía llega y la salida
+ * muestra el botón local requerido por la política de activación del usuario.
+ */
+export function requestOutputFullscreen(): boolean {
+  const output = getOpenOutputWindow();
+  if (!output) return false;
+
+  const message = { type: REQUEST_FULLSCREEN_MESSAGE };
+  try {
+    output.postMessage(message, {
+      targetOrigin: location.origin,
+      delegate: 'fullscreen',
+    } as DelegatedPostMessageOptions);
+  } catch {
+    // Compatibilidad con motores que sólo aceptan la firma clásica.
+    output.postMessage(message, location.origin);
+  }
+  return true;
+}
+
+export function focusOutputWindow(): boolean {
+  const output = getOpenOutputWindow();
+  if (!output) return false;
+  output.focus();
+  return true;
+}
+
 export async function openOutputWindow(): Promise<OpenOutputResult> {
   const url = `${location.origin}${location.pathname}#/output`;
 
@@ -91,6 +169,7 @@ export async function openOutputWindow(): Promise<OpenOutputResult> {
     if (!output) {
       return { window: null, placement: 'manual', reason: 'popup-blocked' };
     }
+    rememberOutputWindow(output);
     output.focus();
     return { window: output, placement: 'manual', reason: 'unsupported' };
   }
@@ -104,6 +183,7 @@ export async function openOutputWindow(): Promise<OpenOutputResult> {
       if (!output) {
         return { window: null, placement: 'manual', reason: 'popup-blocked' };
       }
+      rememberOutputWindow(output);
       output.focus();
       return { window: output, placement: 'manual', reason: 'no-external-display' };
     }
@@ -122,6 +202,7 @@ export async function openOutputWindow(): Promise<OpenOutputResult> {
       return { window: null, placement: 'manual', reason: 'popup-blocked' };
     }
 
+    rememberOutputWindow(output);
     placeWindowOnScreen(output, external);
     return {
       window: output,
@@ -133,6 +214,7 @@ export async function openOutputWindow(): Promise<OpenOutputResult> {
     if (!output) {
       return { window: null, placement: 'manual', reason: 'popup-blocked' };
     }
+    rememberOutputWindow(output);
     output.focus();
     // El operador todavía puede arrastrar la salida al proyector aunque niegue
     // el permiso de administrar ventanas.
