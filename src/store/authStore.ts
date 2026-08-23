@@ -28,9 +28,39 @@ interface AuthState {
   signOutUser: () => Promise<void>;
 }
 
+const OFFLINE_SESSION_KEY = 'wordship.auth.offline-session.v1';
+
+function readOfflineSession(): SessionUser | null {
+  try {
+    const value = localStorage.getItem(OFFLINE_SESSION_KEY);
+    if (!value) return null;
+    const session = JSON.parse(value) as Partial<SessionUser>;
+    return typeof session.uid === 'string'
+      ? {
+          uid: session.uid,
+          email: typeof session.email === 'string' ? session.email : null,
+          name: typeof session.name === 'string' ? session.name : null,
+        }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveOfflineSession(session: SessionUser | null): void {
+  try {
+    if (session) localStorage.setItem(OFFLINE_SESSION_KEY, JSON.stringify(session));
+    else localStorage.removeItem(OFFLINE_SESSION_KEY);
+  } catch {
+    // Firebase Auth conserva su propia sesión; este espejo sólo acelera el modo offline.
+  }
+}
+
+const offlineSession = readOfflineSession();
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  loading: isFirebaseConfigured,
+  user: offlineSession,
+  loading: isFirebaseConfigured && !offlineSession,
   configured: isFirebaseConfigured,
 
   async signInEmail(email, password) {
@@ -59,6 +89,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   async signOutUser() {
     if (!auth) return;
+    saveOfflineSession(null);
+    set({ user: null });
     await signOut(auth);
   },
 }));
@@ -67,10 +99,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 if (isFirebaseConfigured && auth) {
   auth.languageCode = 'es';
   onAuthStateChanged(auth, (u) => {
+    const user = u
+      ? { uid: u.uid, email: u.email, name: u.displayName ?? u.email }
+      : null;
+    saveOfflineSession(user);
     useAuthStore.setState({
-      user: u
-        ? { uid: u.uid, email: u.email, name: u.displayName ?? u.email }
-        : null,
+      user,
       loading: false,
     });
   });

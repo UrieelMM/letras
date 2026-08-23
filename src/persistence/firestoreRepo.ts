@@ -70,14 +70,20 @@ export function createFirestoreRepo(uid: string): DataRepo {
 
     subscribe(onChange) {
       const unsubs = [
-        onSnapshot(songsCol, (snap) =>
-          onChange({ songs: snap.docs.map((d) => d.data() as Song) }),
+        onSnapshot(
+          songsCol,
+          (snap) => onChange({ songs: snap.docs.map((d) => d.data() as Song) }),
+          (error) => console.warn('No se pudo sincronizar canciones:', error),
         ),
-        onSnapshot(themesCol, (snap) =>
-          onChange({ themes: snap.docs.map((d) => d.data() as Theme) }),
+        onSnapshot(
+          themesCol,
+          (snap) => onChange({ themes: snap.docs.map((d) => d.data() as Theme) }),
+          (error) => console.warn('No se pudo sincronizar temas:', error),
         ),
-        onSnapshot(setlistsCol, (snap) =>
-          onChange({ setlists: snap.docs.map((d) => d.data() as Setlist) }),
+        onSnapshot(
+          setlistsCol,
+          (snap) => onChange({ setlists: snap.docs.map((d) => d.data() as Setlist) }),
+          (error) => console.warn('No se pudo sincronizar listas:', error),
         ),
       ];
       return () => unsubs.forEach((u) => u());

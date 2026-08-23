@@ -1,4 +1,4 @@
-import type { AppSettings, LiveState, Song, Theme } from '../types';
+import type { AppSettings, LiveState, Setlist, Song, Theme } from '../types';
 import type { Backup, LibrarySlice, SliceCreator } from './types';
 import { uid } from '../lib/id';
 import { DEFAULT_THEMES, SAMPLE_SONGS } from '../data/seed';
@@ -33,6 +33,28 @@ export const PLACEHOLDER_SETTINGS: AppSettings = {
 
 const REMOVED_THEME_IDS = new Set(['theme-olas3d', 'theme-nubes', 'theme-halo', 'theme-orbe']);
 const REMOVED_SAMPLE_SONG_IDS = new Set(['song-gracia', 'song-grande']);
+const BUNDLED_SONG_IDS = new Set(SAMPLE_SONGS.map((song) => song.id));
+
+/**
+ * El cancionero viaja dentro del JavaScript de la app. Firestore sólo agrega
+ * canciones del usuario o reemplaza una letra de fábrica cuando fue editada.
+ */
+function withBundledSongbook(storedSongs: Song[]): Song[] {
+  const songsById = new Map(SAMPLE_SONGS.map((song) => [song.id, song]));
+
+  for (const song of storedSongs) {
+    // Versiones antiguas copiaban el cancionero completo a Firestore con
+    // updatedAt=0. Se prefiere el bundle actual salvo que el usuario lo editara.
+    if (BUNDLED_SONG_IDS.has(song.id) && song.updatedAt === 0) continue;
+    songsById.set(song.id, song);
+  }
+
+  return Array.from(songsById.values());
+}
+
+function browserIsOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
 
 /** Copia profunda de un tema (elimina referencias y campos undefined). */
 function cloneTheme(theme: Theme): Theme {
@@ -50,8 +72,8 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
 
   init: (userId) => {
     const s = get();
-    if (s.ready && s.userId === userId) return Promise.resolve();
     if (initRequest?.userId === userId) return initRequest.promise;
+    if (s.ready && s.userId === userId) return Promise.resolve();
 
     const generation = ++initGeneration;
 
@@ -59,17 +81,62 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
       unsubscribe();
       unsubscribe = null;
     }
-    set({ ready: false, userId });
+    const localSettings = { ...PLACEHOLDER_SETTINGS };
+    const localTheme = DEFAULT_THEMES[0];
+
+    // Arranque local inmediato: las letras integradas nunca deben esperar a
+    // Firebase. La caché de Firestore añadirá después los datos personalizados.
+    set({
+      ready: true,
+      userId,
+      songs: SAMPLE_SONGS,
+      themes: DEFAULT_THEMES,
+      setlists: [],
+      settings: localSettings,
+      activeSongId: null,
+      workspaceTab: 'lyrics',
+      slides: [],
+      liveSlideIndex: -1,
+      live: {
+        slide: null,
+        theme: localTheme,
+        blackout: false,
+        showLogo: false,
+        clearText: false,
+      },
+    });
 
     const promise = (async () => {
       const activeRepo = createFirestoreRepo(userId);
       repo = activeRepo;
-      let [songs, themes, setlists, settings] = await Promise.all([
-        activeRepo.loadSongs(),
-        activeRepo.loadThemes(),
-        activeRepo.loadSetlists(),
-        activeRepo.loadSettings(),
-      ]);
+      let songs: Song[];
+      let themes: Theme[];
+      let setlists: Setlist[];
+      let settings: AppSettings | null;
+
+      const [songsResult, themesResult, setlistsResult, settingsResult] =
+        await Promise.allSettled([
+          activeRepo.loadSongs(),
+          activeRepo.loadThemes(),
+          activeRepo.loadSetlists(),
+          activeRepo.loadSettings(),
+        ]);
+      const failedLoad = [songsResult, themesResult, setlistsResult, settingsResult].find(
+        (result) => result.status === 'rejected',
+      );
+
+      if (failedLoad?.status === 'rejected' && !browserIsOffline()) {
+        throw failedLoad.reason;
+      }
+
+      // Aun si una consulta concreta no estaba en la caché de Firestore, se
+      // aprovechan las demás y se completa lo faltante con el bundle local.
+      songs = songsResult.status === 'fulfilled' ? songsResult.value : [];
+      themes = themesResult.status === 'fulfilled' ? themesResult.value : DEFAULT_THEMES;
+      setlists = setlistsResult.status === 'fulfilled' ? setlistsResult.value : [];
+      settings = settingsResult.status === 'fulfilled' ? settingsResult.value : localSettings;
+
+      songs = withBundledSongbook(songs);
 
       // Limpieza: elimina temas retirados (emojis pesados + efectos descartados).
       const toRemove = themes.filter(
@@ -94,17 +161,6 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
         songs = songs.filter((song) => !REMOVED_SAMPLE_SONG_IDS.has(song.id));
         await Promise.all(
           removedSampleSongs.map((song) => activeRepo.deleteSong(song.id).catch(() => {})),
-        );
-      }
-      if (songs.length === 0) {
-        songs = SAMPLE_SONGS;
-        await Promise.all(songs.map((song) => activeRepo.saveSong(song).catch(() => {})));
-      } else if (!songs.some((song) => song.id.startsWith('songbook-'))) {
-        // Importación inicial del cancionero para bibliotecas existentes.
-        const songbookSongs = SAMPLE_SONGS.filter((song) => song.id.startsWith('songbook-'));
-        songs = [...songs, ...songbookSongs];
-        await Promise.all(
-          songbookSongs.map((song) => activeRepo.saveSong(song).catch(() => {})),
         );
       }
       if (!settings) {
@@ -141,7 +197,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
         unsubscribe = activeRepo.subscribe((snap) => {
           if (generation !== initGeneration) return;
           set((st) => ({
-            songs: snap.songs ?? st.songs,
+            songs: snap.songs ? withBundledSongbook(snap.songs) : st.songs,
             themes: snap.themes ?? st.themes,
             setlists: snap.setlists ?? st.setlists,
           }));
