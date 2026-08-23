@@ -4,6 +4,7 @@ import { toast } from '../../store/toastStore';
 import { remoteServiceErrorMessage } from '../../lib/userFacingError';
 import MetallicSwirl from '../metallic-swirl';
 import loginLogo from '../../assets/2.png';
+import { InstallAppButton } from '../InstallAppButton';
 
 export function LoginScreen() {
   const { signInEmail, signUpEmail, signInGoogle, resetPassword } = useAuthStore();
@@ -268,6 +269,10 @@ export function LoginScreen() {
                 {googleError}
               </p>
             )}
+            <InstallAppButton
+              label="Instalar Wordship Screen"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d4cfdd] bg-[#ece8f2] px-4 py-3 text-sm font-bold text-[#4d2eaf] transition hover:border-[#aaa1bc] hover:bg-white disabled:cursor-wait disabled:opacity-55"
+            />
           </div>
         </section>
       </div>

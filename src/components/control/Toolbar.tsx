@@ -14,6 +14,7 @@ import { createChannel } from '../../sync/channel';
 import type { OutputStatus } from '../../types';
 import { uploadBrandLogo } from '../../firebase/themeImageStorage';
 import appLogo from '../../assets/3.png';
+import { InstallAppButton } from '../InstallAppButton';
 
 export function Toolbar() {
   const live = useStore((s) => s.live);
@@ -261,6 +262,8 @@ export function Toolbar() {
           className="hidden"
           onChange={handleImport}
         />
+
+        <InstallAppButton />
 
         <button
           className="btn-accent"
