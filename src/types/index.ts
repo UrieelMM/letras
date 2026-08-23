@@ -200,7 +200,9 @@ export type AnimatedBgPreset =
   | 'asciiTiles'
   | 'twilightLines'
   | 'chromaBlinds'
-  | 'glassTiles';
+  | 'glassTiles'
+  | 'robotLights'
+  | 'graphicWorlds';
 
 // Capa de efectos que se superpone SOBRE cualquier fondo (incl. imagen)
 export type OverlayEffectPreset =
@@ -212,6 +214,29 @@ export type OverlayEffectPreset =
   | 'confetti'
   | 'embers'
   | 'emojis';
+
+export type RobotLightsVariant =
+  | 'festival'
+  | 'stadium'
+  | 'rock'
+  | 'disco'
+  | 'golden'
+  | 'cyber'
+  | 'arena'
+  | 'worship'
+  | 'edm'
+  | 'carnival'
+  | 'ice'
+  | 'summer'
+  | 'spring'
+  | 'autumn'
+  | 'winter'
+  | 'cosmic'
+  | 'ocean'
+  | 'enchanted'
+  | 'city'
+  | 'volcano'
+  | 'candy';
 
 export interface OverlayEffectConfig {
   preset: OverlayEffectPreset;
@@ -229,6 +254,7 @@ export type BackgroundConfig =
       preset: AnimatedBgPreset;
       colorA: string;
       colorB: string;
+      robotVariant?: RobotLightsVariant;
       // ----- Efectos de postprocesado (cinematográficos) -----
       bloom?: number; // intensidad del glow (0 = desactivado, típico 0.4–1.6)
       bloomThreshold?: number; // umbral de brillo para el glow (0..1, default 0.6)

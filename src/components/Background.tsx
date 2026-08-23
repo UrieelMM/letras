@@ -25,6 +25,7 @@ import Portal from './portal';
 import RadialLiquid from './radial-liquid';
 import RetroLines from './retro-lines';
 import RisingLines from './rising-lines';
+import RobotLights from './robot-lights';
 import RotatingStars from './rotating-stars';
 import RubberFluid from './rubber-fluid';
 import ShadowBars from './shadow-bars';
@@ -485,6 +486,19 @@ export function Background({ bg }: Props) {
             backgroundColor={bg.colorB}
             className="absolute inset-0"
           />
+        );
+      }
+      if (bg.preset === 'robotLights' || bg.preset === 'graphicWorlds') {
+        return (
+          <div className="absolute inset-0 overflow-hidden" style={{ background: bg.colorB }}>
+            <RobotLights
+              colorA={bg.colorA}
+              colorB={bg.colorB}
+              variant={bg.robotVariant}
+              showRig={bg.preset === 'robotLights'}
+              className="absolute inset-0"
+            />
+          </div>
         );
       }
       return (

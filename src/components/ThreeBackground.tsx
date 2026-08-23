@@ -72,7 +72,9 @@ type ExternalPreset =
   | 'asciiTiles'
   | 'twilightLines'
   | 'chromaBlinds'
-  | 'glassTiles';
+  | 'glassTiles'
+  | 'robotLights'
+  | 'graphicWorlds';
 type ShaderPreset = Exclude<AnimatedBgPreset, ObjectPreset | ExternalPreset>;
 
 const MODE: Record<ShaderPreset, number> = {

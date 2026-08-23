@@ -192,6 +192,8 @@ const ALL_ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = [
   { value: 'twilightLines', label: 'Twilight Lines' },
   { value: 'chromaBlinds', label: 'Chroma Blinds' },
   { value: 'glassTiles', label: 'Glass Tiles' },
+  { value: 'robotLights', label: 'Cabezas móviles / reflectores' },
+  { value: 'graphicWorlds', label: 'Mundos gráficos animados' },
 ];
 
 const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = ALL_ANIM_PRESETS.filter(
