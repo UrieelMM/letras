@@ -18,7 +18,7 @@ export interface Backup {
   settings: AppSettings;
 }
 
-/** Datos del usuario + persistencia (Firestore). */
+/** Datos del usuario + persistencia local o sincronizada con Firestore. */
 export interface LibrarySlice {
   ready: boolean;
   userId: string | null;

@@ -94,7 +94,7 @@ export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
     const low = Math.min(from, to);
     const high = Math.max(from, to);
     const verses = state.bibleChapterVerses.filter(
-      (item) => item.verse >= low && item.verse <= high,
+      (item) => item.verse <= high && (item.verseEnd ?? item.verse) >= low,
     );
     if (!verses.length) return;
 

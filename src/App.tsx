@@ -10,7 +10,7 @@ import { Toaster } from './components/Toaster';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { createChannel } from './sync/channel';
 import { libraryLoadErrorMessage } from './lib/userFacingError';
-import appLogo from './assets/3.png';
+import { LandingPage } from './components/landing/LandingPage';
 
 function Splash({ label }: { label: string }) {
   return (
@@ -18,25 +18,6 @@ function Splash({ label }: { label: string }) {
       <div className="flex flex-col items-center gap-4">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-accent" />
         <p className="text-sm text-white/50">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-function ConfigNeeded() {
-  return (
-    <div className="grid min-h-screen place-items-center bg-ink-900 p-6 text-white">
-      <div className="glass max-w-md rounded-2xl p-7 text-center">
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center overflow-hidden rounded-xl bg-accent shadow-glow">
-          <img src={appLogo} alt="" className="h-16 w-16 max-w-none object-contain" />
-        </div>
-        <h1 className="mb-2 text-lg font-bold">Configura Firebase</h1>
-        <p className="text-sm leading-relaxed text-white/60">
-          La app guarda todo en la nube (Firestore). Copia{' '}
-          <code className="rounded bg-white/10 px-1">.env.example</code> a{' '}
-          <code className="rounded bg-white/10 px-1">.env</code>, rellena las llaves
-          de tu proyecto de Firebase y reinicia el servidor.
-        </p>
       </div>
     </div>
   );
@@ -95,7 +76,7 @@ function ControlRoute() {
 
 /** Ruta protegida: requiere sesión y carga los datos del usuario. */
 function ControlGate() {
-  const { user, loading, configured, signOutUser } = useAuthStore();
+  const { user, loading, configured, localMode, signOutUser } = useAuthStore();
   const ready = useStore((s) => s.ready);
   const init = useStore((s) => s.init);
   const reset = useStore((s) => s.reset);
@@ -103,15 +84,17 @@ function ControlGate() {
   const [retryAttempt, setRetryAttempt] = useState(0);
 
   useEffect(() => {
-    if (!configured || loading) return;
-    if (!user) {
+    const useLocalLibrary = localMode || !configured;
+    if (loading && !useLocalLibrary) return;
+    const userId = useLocalLibrary ? 'local' : user?.uid;
+    if (!userId) {
       reset();
       setLoadError(null);
       return;
     }
     let active = true;
     setLoadError(null);
-    init(user.uid).catch((error) => {
+    init(userId).catch((error) => {
       if (!active) return;
       console.error(error);
       const message = libraryLoadErrorMessage(error);
@@ -121,11 +104,11 @@ function ControlGate() {
     return () => {
       active = false;
     };
-  }, [user, loading, configured, init, reset, retryAttempt]);
+  }, [user, loading, configured, localMode, init, reset, retryAttempt]);
 
-  if (!configured) return <ConfigNeeded />;
-  if (loading) return <Splash label="Cargando..." />;
-  if (!user) return <LoginScreen />;
+  const useLocalLibrary = localMode || !configured;
+  if (loading && !useLocalLibrary) return <Splash label="Cargando..." />;
+  if (!useLocalLibrary && !user) return <Navigate to="/login" replace />;
   if (loadError) {
     return (
       <LibraryLoadFailure
@@ -144,12 +127,22 @@ function ControlGate() {
   return <ControlRoute />;
 }
 
+function LoginRoute() {
+  const { user, loading, configured, localMode } = useAuthStore();
+
+  if (loading && configured && !localMode) return <Splash label="Cargando..." />;
+  if (user || localMode) return <Navigate to="/app" replace />;
+  return <LoginScreen />;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <HashRouter>
         <Routes>
-          <Route path="/" element={<ControlGate />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginRoute />} />
+          <Route path="/app" element={<ControlGate />} />
           <Route path="/output" element={<OutputView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

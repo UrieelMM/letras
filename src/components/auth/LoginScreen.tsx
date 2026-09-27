@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from '../../store/toastStore';
 import { remoteServiceErrorMessage } from '../../lib/userFacingError';
@@ -7,7 +8,7 @@ import loginLogo from '../../assets/2.png';
 import { InstallAppButton } from '../InstallAppButton';
 
 export function LoginScreen() {
-  const { signInEmail, signUpEmail, signInGoogle, resetPassword } = useAuthStore();
+  const { signInEmail, signUpEmail, signInGoogle, resetPassword, useOfflineMode } = useAuthStore();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -15,6 +16,10 @@ export function LoginScreen() {
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [googleError, setGoogleError] = useState('');
+
+  useEffect(() => {
+    document.title = 'Iniciar sesión — Wordship Screen';
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,7 +110,13 @@ export function LoginScreen() {
           <div className="absolute right-[-12rem] top-20 h-[28rem] w-[28rem] rounded-full border border-accent/20" />
           <div className="absolute right-[-7rem] top-40 h-[20rem] w-[20rem] rounded-full border border-accent/10" />
 
-          <div className="relative rounded-2xl bg-[#f4f2f8]/95 shadow-[0_10px_35px_rgba(0,0,0,.18)]" style={{ backdropFilter: 'blur(12px)', width: 'fit-content' }}>
+          <Link
+            to="/"
+            aria-label="Volver al inicio"
+            title="Volver al inicio"
+            className="relative block rounded-2xl bg-[#f4f2f8]/95 shadow-[0_10px_35px_rgba(0,0,0,.18)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_40px_rgba(0,0,0,.24)]"
+            style={{ backdropFilter: 'blur(12px)', width: 'fit-content' }}
+          >
             <div className="relative h-[72px] w-[190px] px-[20px] py-[50px] overflow-hidden">
               <img
                 src={loginLogo}
@@ -113,7 +124,7 @@ export function LoginScreen() {
                 className="absolute left-1/2 top-1/2 h-52 w-52 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain"
               />
             </div>
-          </div>
+          </Link>
 
           <div className="relative my-auto max-w-xl py-10 lg:py-14">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-200">
@@ -273,6 +284,16 @@ export function LoginScreen() {
               label="Instalar Wordship Screen"
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d4cfdd] bg-[#ece8f2] px-4 py-3 text-sm font-bold text-[#4d2eaf] transition hover:border-[#aaa1bc] hover:bg-white disabled:cursor-wait disabled:opacity-55"
             />
+            <button
+              type="button"
+              onClick={() => {
+                useOfflineMode();
+                toast.success('Modo offline activado. Tus cambios se guardarán en este dispositivo.');
+              }}
+              className="mt-3 flex w-full items-center justify-center rounded-xl border border-[#d4cfdd] bg-white px-4 py-3 text-sm font-bold text-[#4d2eaf] transition hover:border-[#aaa1bc] hover:bg-[#fbfaff]"
+            >
+              Usar sin conexión
+            </button>
           </div>
         </section>
       </div>

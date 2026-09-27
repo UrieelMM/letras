@@ -3,7 +3,7 @@ export interface BibleVersion {
   name: string;
   abbr: string;
   lang: 'es' | 'en';
-  source: 'bundled' | 'apiBible' | 'freeBible';
+  source: 'bundled';
   available: boolean;
   availabilityReason?: 'missingKey' | 'unlicensed' | 'error';
   availabilityMessage?: string;
@@ -15,6 +15,7 @@ export interface BibleVerse {
   book: number;
   chapter: number;
   verse: number;
+  verseEnd?: number;
   text: string;
 }
 
@@ -22,7 +23,7 @@ export interface BibleBookData {
   book: number;
   chapters: Array<{
     chapter: number;
-    verses: Array<{ verse: number; text: string }>;
+    verses: Array<{ verse: number; verseEnd?: number; text: string }>;
   }>;
 }
 

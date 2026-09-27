@@ -12,7 +12,7 @@ import {
 } from '../../sync/screens';
 import { createChannel } from '../../sync/channel';
 import type { OutputStatus } from '../../types';
-import { uploadBrandLogo } from '../../firebase/themeImageStorage';
+import { saveBrandLogoLocally } from '../../media/localMedia';
 import appLogo from '../../assets/3.png';
 import { InstallAppButton } from '../InstallAppButton';
 
@@ -25,6 +25,8 @@ export function Toolbar() {
   const importData = useStore((s) => s.importData);
   const updateSettings = useStore((s) => s.updateSettings);
   const user = useAuthStore((s) => s.user);
+  const localMode = useAuthStore((s) => s.localMode);
+  const authConfigured = useAuthStore((s) => s.configured);
   const signOutUser = useAuthStore((s) => s.signOutUser);
   const fileRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -165,9 +167,9 @@ export function Toolbar() {
     if (!file) return;
     setLogoUploadProgress(0);
     try {
-      const logoUrl = await uploadBrandLogo(file, setLogoUploadProgress);
+      const logoUrl = await saveBrandLogoLocally(file, setLogoUploadProgress);
       updateSettings({ logoUrl });
-      toast.success('Logo subido y guardado para la proyección.');
+      toast.success('Logo guardado localmente para la proyección.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo subir el logo.';
       toast.error(message);
@@ -283,11 +285,17 @@ export function Toolbar() {
 
         <div className="mx-1 h-6 w-px bg-white/10" />
         <span className="hidden max-w-[160px] truncate text-xs text-white/40 sm:inline">
-          {user?.name ?? user?.email}
+          {localMode ? 'Modo offline' : user?.name ?? user?.email}
         </span>
-        <button className="btn-ghost" onClick={handleSignOut} title="Cerrar sesión">
-          Salir
-        </button>
+        {(user || (localMode && authConfigured)) && (
+          <button
+            className="btn-ghost"
+            onClick={handleSignOut}
+            title={localMode ? 'Conectar una cuenta' : 'Cerrar sesión'}
+          >
+            {localMode ? 'Conectar' : 'Salir'}
+          </button>
+        )}
       </div>
     </header>
   );

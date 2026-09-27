@@ -38,12 +38,16 @@ import SwirlBlend from './swirl-blend';
 import { ThreeBackground } from './ThreeBackground';
 import TwilightLines from './twilight-lines';
 import WarpTwister from './warp-twister';
+import { useLocalMediaUrl } from '../media/useLocalMediaUrl';
+import glassFlowTexture from '../assets/glass-flow-texture.svg';
 
 interface Props {
   bg: BackgroundConfig;
 }
 
 export function Background({ bg }: Props) {
+  const imageUrl = useLocalMediaUrl(bg.kind === 'image' ? bg.url : undefined);
+
   switch (bg.kind) {
     case 'solid':
       return <div className="absolute inset-0" style={{ background: bg.color }} />;
@@ -58,7 +62,7 @@ export function Background({ bg }: Props) {
       return (
         <div
           className="absolute inset-0 bg-center"
-          style={{ backgroundImage: `url(${bg.url})`, backgroundSize: bg.fit }}
+          style={{ backgroundImage: imageUrl ? `url(${imageUrl})` : undefined, backgroundSize: bg.fit }}
         />
       );
     case 'animated':
@@ -257,7 +261,7 @@ export function Background({ bg }: Props) {
           <GlassFlow
             width="100%"
             height="100%"
-            imageSrc="https://images.unsplash.com/photo-1497294815431-9365093b7331?q=80&w=3270&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            imageSrc={glassFlowTexture}
             stripeCount={6}
             angle={-13}
             lensCurvature={0.49}

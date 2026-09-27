@@ -21,6 +21,8 @@ interface AuthState {
   user: SessionUser | null;
   loading: boolean;
   configured: boolean;
+  localMode: boolean;
+  useOfflineMode: () => void;
   signInEmail: (email: string, password: string) => Promise<void>;
   signUpEmail: (name: string, email: string, password: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
@@ -29,6 +31,7 @@ interface AuthState {
 }
 
 const OFFLINE_SESSION_KEY = 'wordship.auth.offline-session.v1';
+const LOCAL_MODE_KEY = 'wordship.auth.local-mode.v1';
 
 function readOfflineSession(): SessionUser | null {
   try {
@@ -56,23 +59,51 @@ function saveOfflineSession(session: SessionUser | null): void {
   }
 }
 
+function readLocalMode(): boolean {
+  try {
+    return localStorage.getItem(LOCAL_MODE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function saveLocalMode(enabled: boolean): void {
+  try {
+    if (enabled) localStorage.setItem(LOCAL_MODE_KEY, 'true');
+    else localStorage.removeItem(LOCAL_MODE_KEY);
+  } catch {
+    // El estado en memoria sigue permitiendo trabajar durante esta sesión.
+  }
+}
+
 const offlineSession = readOfflineSession();
+const initialLocalMode = !isFirebaseConfigured || readLocalMode();
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: offlineSession,
-  loading: isFirebaseConfigured && !offlineSession,
+  loading: isFirebaseConfigured && !offlineSession && !initialLocalMode,
   configured: isFirebaseConfigured,
+  localMode: initialLocalMode,
+
+  useOfflineMode() {
+    saveLocalMode(true);
+    set({ localMode: true, loading: false });
+  },
 
   async signInEmail(email, password) {
     if (!auth) return;
     await signInWithEmailAndPassword(auth, email, password);
+    saveLocalMode(false);
+    set({ localMode: false });
   },
   async signUpEmail(name, email, password) {
     if (!auth) return;
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     if (name) await updateProfile(cred.user, { displayName: name });
+    saveLocalMode(false);
     set({
       user: { uid: cred.user.uid, email: cred.user.email, name: name || cred.user.email },
+      localMode: false,
     });
   },
   async signInGoogle() {
@@ -82,12 +113,19 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Popup evita los problemas de almacenamiento cross-origin del flujo redirect
     // cuando la app se publica fuera de Firebase Hosting.
     await signInWithPopup(auth, provider);
+    saveLocalMode(false);
+    set({ localMode: false });
   },
   async resetPassword(email) {
     if (!auth) return;
     await sendPasswordResetEmail(auth, email);
   },
   async signOutUser() {
+    if (useAuthStore.getState().localMode) {
+      saveLocalMode(false);
+      set({ localMode: !isFirebaseConfigured, user: null });
+      return;
+    }
     if (!auth) return;
     saveOfflineSession(null);
     set({ user: null });
@@ -103,9 +141,11 @@ if (isFirebaseConfigured && auth) {
       ? { uid: u.uid, email: u.email, name: u.displayName ?? u.email }
       : null;
     saveOfflineSession(user);
+    if (user) saveLocalMode(false);
     useAuthStore.setState({
       user,
       loading: false,
+      ...(user ? { localMode: false } : {}),
     });
   });
 } else {

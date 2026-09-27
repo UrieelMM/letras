@@ -5,27 +5,22 @@
 > Persistencia inicial en **localStorage** (migrable a base de datos más adelante).
 
 La vista de control incluye pestañas para **Letras** y **Biblia**. La Biblia
-incorpora RV1909 y KJV para uso offline; NTV, NIV 2011 y LBLA mediante API.Bible;
-y RVR1960, DHH y PDT mediante Bible API. La navegación, búsqueda, rangos y
-referencias reutilizan los mismos temas, fondos y animaciones de las canciones.
+incorpora **RV1909, RVR1960, LBLA, NBLA, NTV, NVI, TLA y KJV** como archivos
+JSON locales. Todas funcionan sin conexión y quedan incluidas en el precache de
+la PWA; no se necesita una API key ni se consulta ningún proveedor bíblico
+externo. La navegación, búsqueda, rangos y referencias reutilizan los mismos
+temas, fondos y animaciones de las canciones.
 
-Para habilitar las versiones de API.Bible, crea una aplicación en
-[API.Bible](https://scripture.api.bible/), añade las Biblias a tu plan y coloca
-su API key en `.env`. Por compatibilidad se conserva el nombre anterior:
+Los avisos editoriales y de copyright se conservan en los manifiestos de
+`public/bibles/` y se muestran en la interfaz/proyección cuando corresponde.
+Antes de distribuir públicamente una compilación, verifica que cuentas con los
+derechos necesarios para las traducciones protegidas.
 
-```env
-VITE_YOUVERSION_APP_KEY=tu_app_key
-```
-
-Las versiones en línea requieren internet la primera vez que se abre cada
-capítulo; después se usa una caché local temporal de hasta 14 días. La búsqueda
-global funciona en ambos proveedores online y en las versiones offline. La
-integración reporta FUMS v3 para el contenido servido por API.Bible.
-
-RVR1960, DHH y PDT no requieren llave y se consumen desde
-[`bible-api.deno.dev`](https://docs-bible-api.netlify.app/api/versions). Esta API
-está en desarrollo y no entrega metadata de copyright, por lo que conviene
-verificar por separado los derechos de cada traducción antes de distribución pública.
+La aplicación completa puede instalarse como PWA y usarse sin conexión. El
+cancionero, las ocho Biblias, los temas, fondos animados, imágenes internas y
+tipografías están empaquetados. Las canciones y ajustes del modo local se
+guardan en `localStorage`; las imágenes personalizadas se guardan en IndexedDB.
+Firebase es opcional y se usa solamente para cuentas y sincronización.
 
 ---
 
@@ -373,8 +368,8 @@ baile), combinados con **Framer Motion** para las transiciones entre slides.
 Además incluye una **capa de efectos superpuestos** (lluvia, nieve, estrellas,
 bokeh, confeti y brasas en canvas 2D) que se dibuja sobre cualquier fondo —
 incluida una imagen — para darle más dinamismo, y un selector de **tipografías
-cargadas dinámicamente desde Google Fonts** (Poppins, Bebas Neue, Pacifico,
-Anton, Fredoka, Playfair Display, etc.) con opción de **letras arcoíris**.
+empaquetadas localmente** (Poppins, Bebas Neue, Pacifico, Anton, Fredoka,
+Playfair Display, etc.) con opción de **letras arcoíris**.
 
 Navegador recomendado: **Chrome o Edge** (para Window Management API). El dashboard del operador abre una salida independiente en `#/output` para el proyector.
 
@@ -410,14 +405,17 @@ intercambiables:
 - **firestoreRepo** (Cloud Firestore): modo multiusuario, datos por usuario en
   `users/{uid}/songs|themes|setlists` y `users/{uid}/meta/settings`.
 
+El usuario también puede pulsar **Usar sin conexión** en la pantalla de acceso.
+En ese modo no se requiere cuenta y todos los cambios quedan en el dispositivo.
+
 Stack de Firebase usado:
 
 - **Auth** (correo/contraseña + Google) para las cuentas.
 - **Cloud Firestore** para los datos (documentos JSON 1:1 con el modelo), con
   **caché offline persistente** y **sincronización en tiempo real** (listeners
   `onSnapshot`) — esto habilita, por ejemplo, control remoto desde el móvil.
-- **Storage** para imágenes/videos de fondo (reglas por usuario en
-  `storage.rules`).
+- **IndexedDB local** para logos e imágenes de fondo, de modo que sigan
+  disponibles aunque Firebase o Internet no respondan.
 
 ### Configuración
 
@@ -426,8 +424,7 @@ Stack de Firebase usado:
    **Cloud Firestore**.
 2. Copia `.env.example` a `.env` y rellena las llaves del SDK
    (Configuración del proyecto → Tus apps → SDK).
-3. Publica las reglas de seguridad incluidas: `firestore.rules` y `storage.rules`
-   (cada usuario sólo accede a sus propios datos).
+3. Publica las reglas de seguridad incluidas en `firestore.rules`.
 4. `npm run dev`. Si las llaves están presentes, aparece la pantalla de login;
    si no, la app corre en **modo local** sin cuenta.
 

@@ -6,6 +6,7 @@ import { GsapText } from './GsapText';
 import { OverlayEffect } from './OverlayEffect';
 import { loadFont } from '../lib/fonts';
 import appLogo from '../assets/3.png';
+import { useLocalMediaUrl } from '../media/useLocalMediaUrl';
 
 interface Props {
   live: LiveState;
@@ -104,6 +105,7 @@ function originFor(align: string, vAlign: string): string {
 
 export function SlideStage({ live, scale = 1 }: Props) {
   const { theme, slide, blackout, showLogo, logoUrl, clearText } = live;
+  const resolvedLogoUrl = useLocalMediaUrl(logoUrl);
   const t = theme.transition;
   const referenceStyle = theme.reference ?? { show: true, position: 'bottom' as const, sizeVw: 1.25 };
   const showReference = Boolean(slide?.reference && referenceStyle.show);
@@ -113,7 +115,7 @@ export function SlideStage({ live, scale = 1 }: Props) {
       : `${6 * scale}% ${6 * scale}% ${11 * scale}%`
     : `${6 * scale}%`;
 
-  // Carga la tipografia del tema desde Google Fonts (en esta ventana).
+  // Activa la tipografía local del tema en esta ventana.
   useEffect(() => {
     loadFont(theme.font.family);
   }, [theme.font.family]);
@@ -215,7 +217,7 @@ export function SlideStage({ live, scale = 1 }: Props) {
           >
             <div className="flex items-center justify-center gap-5">
               <img
-                src={logoUrl || appLogo}
+                src={resolvedLogoUrl || appLogo}
                 alt={logoUrl ? 'Logo de la organización' : 'Wordship Screen'}
                 className="object-contain drop-shadow-2xl"
                 style={{

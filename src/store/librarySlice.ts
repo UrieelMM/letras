@@ -4,6 +4,7 @@ import { uid } from '../lib/id';
 import { DEFAULT_THEMES, SAMPLE_SONGS } from '../data/seed';
 import type { DataRepo } from '../persistence/repo';
 import { createFirestoreRepo } from '../persistence/firestoreRepo';
+import { createLocalRepo } from '../persistence/localRepo';
 
 // Repositorio "vacío" mientras no hay sesión (no persiste en ningún lado).
 const noopRepo: DataRepo = {
@@ -107,7 +108,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
     });
 
     const promise = (async () => {
-      const activeRepo = createFirestoreRepo(userId);
+      const activeRepo = userId === 'local' ? createLocalRepo() : createFirestoreRepo(userId);
       repo = activeRepo;
       let songs: Song[];
       let themes: Theme[];

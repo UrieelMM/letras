@@ -1,0 +1,11 @@
+{
+  "id": "nbla",
+  "translation": "Nueva Biblia de las Américas",
+  "abbreviation": "NBLA",
+  "language": "Español (América Latina)",
+  "source": "https://github.com/mrk214/bible-data-es-spa",
+  "copyright": "1986, 1995, 1997, 2005 by The Lockman Foundation",
+  "sourceVersion": 103,
+  "publisher": "The Lockman Foundation",
+  "books": 66
+}

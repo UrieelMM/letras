@@ -1,11 +1,11 @@
-// Tipografías disponibles, cargadas dinámicamente desde Google Fonts.
+// Tipografías disponibles. Sus archivos se empaquetan en src/assets/fonts.
 
 export interface FontOption {
   /** Nombre de la familia CSS (lo que se usa en font-family). */
   family: string;
   /** Etiqueta legible para el selector. */
   label: string;
-  /** Valor para el parámetro family de la API css2 de Google Fonts. */
+  /** Especificación usada por el script que actualiza los archivos locales. */
   google: string;
   /** Categoría para agrupar/orientar el uso. */
   category: 'sans' | 'display' | 'script' | 'serif';
@@ -41,9 +41,8 @@ export const FONT_OPTIONS: FontOption[] = [
 const loaded = new Set<string>();
 
 /**
- * Inyecta el <link> de Google Fonts para una familia (una sola vez por documento).
- * Funciona tanto en la ventana de control como en la de proyección
- * (cada una tiene su propio `document`).
+ * Solicita al navegador una fuente ya empaquetada para que `document.fonts.ready`
+ * refleje su carga tanto en control como en proyección. No hace solicitudes de red.
  */
 export function loadFont(family: string): void {
   if (!family || loaded.has(family)) return;
@@ -51,12 +50,5 @@ export function loadFont(family: string): void {
   if (!opt) return;
   loaded.add(family);
 
-  const id = `gf-${opt.family.replace(/\s+/g, '-')}`;
-  if (document.getElementById(id)) return;
-
-  const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${opt.google}&display=swap`;
-  document.head.appendChild(link);
+  void document.fonts?.load(`400 1em "${opt.family}"`).catch(() => {});
 }

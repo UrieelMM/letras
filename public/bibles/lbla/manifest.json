@@ -1,0 +1,11 @@
+{
+  "id": "lbla",
+  "translation": "La Biblia de las Américas",
+  "abbreviation": "LBLA",
+  "language": "Español (América Latina)",
+  "source": "https://github.com/mrk214/bible-data-es-spa",
+  "copyright": "1986, 1995, 1997 by The Lockman Foundation",
+  "sourceVersion": 89,
+  "publisher": "The Lockman Foundation",
+  "books": 66
+}

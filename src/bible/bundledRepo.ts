@@ -9,6 +9,61 @@ export const BUNDLED_BIBLE_VERSIONS: BibleVersion[] = [
     lang: 'es',
     source: 'bundled',
     available: true,
+    copyright: 'Dominio público.',
+  },
+  {
+    id: 'rvr1960',
+    name: 'Biblia Reina-Valera 1960',
+    abbr: 'RVR1960',
+    lang: 'es',
+    source: 'bundled',
+    available: true,
+    copyright: 'Texto bíblico Reina-Valera 1960® © Sociedades Bíblicas en América Latina, 1960. Derechos renovados 1988, Sociedades Bíblicas Unidas.',
+  },
+  {
+    id: 'lbla',
+    name: 'La Biblia de las Américas',
+    abbr: 'LBLA',
+    lang: 'es',
+    source: 'bundled',
+    available: true,
+    copyright: '1986, 1995, 1997 by The Lockman Foundation.',
+  },
+  {
+    id: 'nbla',
+    name: 'Nueva Biblia de las Américas',
+    abbr: 'NBLA',
+    lang: 'es',
+    source: 'bundled',
+    available: true,
+    copyright: '1986, 1995, 1997, 2005 by The Lockman Foundation.',
+  },
+  {
+    id: 'ntv',
+    name: 'Nueva Traducción Viviente',
+    abbr: 'NTV',
+    lang: 'es',
+    source: 'bundled',
+    available: true,
+    copyright: 'Santa Biblia, Nueva Traducción Viviente, copyright © 2010 by Tyndale House Foundation. Used by permission of Tyndale House Publishers. All rights reserved.',
+  },
+  {
+    id: 'nvi',
+    name: 'Nueva Versión Internacional',
+    abbr: 'NVI',
+    lang: 'es',
+    source: 'bundled',
+    available: true,
+    copyright: 'Santa Biblia, Nueva Versión Internacional® NVI® © 1999, 2015, 2022 por Biblica, Inc. Usado con permiso. Reservados todos los derechos en todo el mundo.',
+  },
+  {
+    id: 'tla',
+    name: 'Traducción en Lenguaje Actual',
+    abbr: 'TLA',
+    lang: 'es',
+    source: 'bundled',
+    available: true,
+    copyright: 'Traducción en lenguaje actual ® © Sociedades Bíblicas Unidas, 2002, 2004.',
   },
   {
     id: 'kjv',
@@ -17,6 +72,7 @@ export const BUNDLED_BIBLE_VERSIONS: BibleVersion[] = [
     lang: 'en',
     source: 'bundled',
     available: true,
+    copyright: 'Public Domain (Unlicense).',
   },
 ];
 
@@ -106,7 +162,7 @@ export const bundledBibleRepo: BibleRepo = {
 
   async getPassage(versionId, book, chapter, from, to) {
     const verses = await this.getChapter(versionId, book, chapter);
-    return verses.filter((item) => item.verse >= from && item.verse <= to);
+    return verses.filter((item) => item.verse <= to && (item.verseEnd ?? item.verse) >= from);
   },
 
   async search(versionId, query) {
@@ -122,6 +178,7 @@ export const bundledBibleRepo: BibleRepo = {
               book: data.book,
               chapter: chapter.chapter,
               verse: verse.verse,
+              verseEnd: verse.verseEnd,
               text: verse.text,
             });
             if (matches.length >= 100) return matches;

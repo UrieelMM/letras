@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
+import defaultTexture from "../../assets/glass-flow-texture.svg";
 
 interface GlassFlowProps {
   /** Width of the component */
@@ -267,7 +268,7 @@ const GlassFlow: React.FC<GlassFlowProps> = ({
   width = "100%",
   height = "100%",
   className = "",
-  imageSrc = "https://images.unsplash.com/photo-1497294815431-9365093b7331?q=80&w=3270&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  imageSrc = defaultTexture,
   videoSrc,
   stripeCount = 6,
   angle = -13,

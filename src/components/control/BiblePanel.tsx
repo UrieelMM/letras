@@ -26,12 +26,15 @@ export function BiblePanel() {
   const [to, setTo] = useState(1);
 
   const version = versions.find((item) => item.id === versionId);
-  const isOnline = version?.source === 'apiBible' || version?.source === 'freeBible';
   const isUnavailable = version?.available === false;
-  const isUnlicensed = version?.availabilityReason === 'unlicensed';
   const searchDisabled = Boolean(isUnavailable);
   const selectedBook = BIBLE_BOOKS[book - 1] ?? BIBLE_BOOKS[0];
-  const verseNumbers = useMemo(() => verses.map((item) => item.verse), [verses]);
+  const verseNumbers = useMemo(() => [
+    ...new Set(verses.flatMap((item) => Array.from(
+      { length: (item.verseEnd ?? item.verse) - item.verse + 1 },
+      (_, index) => item.verse + index,
+    ))),
+  ], [verses]);
 
   useEffect(() => {
     void loadVersions();
@@ -40,20 +43,20 @@ export function BiblePanel() {
   async function chooseResult(result: BibleVerse) {
     await openChapter(result.book, result.chapter);
     setFrom(result.verse);
-    setTo(result.verse);
+    setTo(result.verseEnd ?? result.verse);
     setQuery('');
     setSearched(false);
     clearSearch();
   }
 
-  function selectVerse(verse: number, extend: boolean) {
+  function selectVerse(verse: number, verseEnd: number, extend: boolean) {
     if (extend) {
       setFrom(Math.min(from, verse));
-      setTo(Math.max(from, verse));
+      setTo(Math.max(from, verseEnd));
       return;
     }
     setFrom(verse);
-    setTo(verse);
+    setTo(verseEnd);
   }
 
   return (
@@ -63,21 +66,15 @@ export function BiblePanel() {
           <div>
             <h2 className="text-sm font-semibold text-white">Explorar Biblia</h2>
             <p className="mt-0.5 text-[11px] text-white/35">
-              {isOnline ? 'Versión disponible en línea' : 'Versión incluida para uso offline'}
+              Versiones incluidas para uso offline
             </p>
           </div>
           <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${
             isUnavailable
               ? 'bg-amber-400/10 text-amber-300'
-              : isOnline
-                ? 'bg-sky-400/10 text-sky-300'
-                : 'bg-emerald-400/10 text-emerald-300'
+              : 'bg-emerald-400/10 text-emerald-300'
           }`}>
-            {isUnlicensed
-              ? 'SIN LICENCIA'
-              : isUnavailable
-                ? 'CONFIGURAR'
-                : isOnline ? 'EN LÍNEA' : 'OFFLINE'}
+            {isUnavailable ? 'NO DISPONIBLE' : 'OFFLINE'}
           </span>
         </div>
 
@@ -102,27 +99,14 @@ export function BiblePanel() {
               </option>
             ))}
           </select>
-          {isOnline && version && (
+          {version?.copyright && (
             <div className={`mt-2 rounded-lg border p-2.5 text-[11px] leading-relaxed ${
               isUnavailable
                 ? 'border-amber-400/20 bg-amber-400/10 text-amber-100/80'
-                : 'border-sky-400/15 bg-sky-400/5 text-white/45'
+                : 'border-white/10 bg-white/[0.03] text-white/45'
             }`}>
-              {isUnavailable ? (
-                <>
-                  <p>{version.availabilityMessage}</p>
-                  {isUnlicensed && (
-                    <p className="mt-1 text-white/40">
-                      La App Key es válida; el acceso depende del acuerdo con el editor de esta traducción.
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  {version.copyright && <p className="line-clamp-2">{version.copyright}</p>}
-                  <p className={version.copyright ? 'mt-1' : ''}>Requiere internet · caché temporal de 14 días.</p>
-                </>
-              )}
+              <p className="line-clamp-2">{version.copyright}</p>
+              <p className="mt-1">Texto incluido en la aplicación para uso sin conexión.</p>
               {version.link && (
                 <a
                   className="mt-1 inline-block font-semibold text-sky-300 hover:text-white"
@@ -223,7 +207,7 @@ export function BiblePanel() {
 
         {searching && (
           <div className="px-3 py-8 text-center text-xs text-white/40">
-            {isOnline ? 'Buscando en la Biblia…' : 'Preparando la búsqueda offline por primera vez…'}
+            Preparando la búsqueda offline por primera vez…
           </div>
         )}
 
@@ -248,12 +232,13 @@ export function BiblePanel() {
             <div className="space-y-1">
               {results.map((item) => (
                 <button
-                  key={`${item.book}-${item.chapter}-${item.verse}`}
+                  key={`${item.book}-${item.chapter}-${item.verse}-${item.verseEnd ?? item.verse}`}
                   className="w-full rounded-lg px-3 py-2.5 text-left transition hover:bg-white/5"
                   onClick={() => void chooseResult(item)}
                 >
                   <div className="text-[11px] font-semibold text-accent-soft">
                     {bibleBookName(item.book, version?.lang ?? 'es')} {item.chapter}:{item.verse}
+                    {item.verseEnd ? `–${item.verseEnd}` : ''}
                   </div>
                   <div className="mt-1 line-clamp-3 text-xs leading-relaxed text-white/55">{item.text}</div>
                 </button>
@@ -278,19 +263,20 @@ export function BiblePanel() {
             ) : (
               <div className="space-y-1">
                 {verses.map((item) => {
-                  const selected = item.verse >= Math.min(from, to) && item.verse <= Math.max(from, to);
+                  const verseEnd = item.verseEnd ?? item.verse;
+                  const selected = item.verse <= Math.max(from, to) && verseEnd >= Math.min(from, to);
                   return (
                     <button
-                      key={item.verse}
+                      key={`${item.verse}-${verseEnd}`}
                       className={`flex w-full gap-2.5 rounded-lg px-3 py-2.5 text-left transition ${
                         selected
                           ? 'bg-accent/15 ring-1 ring-inset ring-accent/35'
                           : 'hover:bg-white/5'
                       }`}
-                      onClick={(event) => selectVerse(item.verse, event.shiftKey)}
+                      onClick={(event) => selectVerse(item.verse, verseEnd, event.shiftKey)}
                     >
                       <span className={`w-5 shrink-0 pt-0.5 text-right text-[11px] font-bold ${selected ? 'text-accent-soft' : 'text-white/25'}`}>
-                        {item.verse}
+                        {item.verseEnd ? `${item.verse}–${item.verseEnd}` : item.verse}
                       </span>
                       <span className="text-xs leading-relaxed text-white/70">{item.text}</span>
                     </button>

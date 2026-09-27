@@ -5,7 +5,7 @@ import { SlideStage } from '../SlideStage';
 import { FONT_OPTIONS, loadFont } from '../../lib/fonts';
 import { REMOVED_BG_PRESETS, REMOVED_THEME_IDS } from '../../lib/removedThemes';
 import { REACT_BITS_PRESETS, REACT_BITS_THEME_IDS } from '../../lib/reactBitsThemes';
-import { uploadThemeImage } from '../../firebase/themeImageStorage';
+import { saveThemeImageLocally } from '../../media/localMedia';
 import type {
   AnimatedBgPreset,
   BackgroundConfig,
@@ -298,7 +298,7 @@ export function ThemePanel() {
     if (!file) return;
     setImageUploadProgress(0);
     try {
-      const url = await uploadThemeImage(file, setImageUploadProgress);
+      const url = await saveThemeImageLocally(file, setImageUploadProgress);
       const uploadedTheme: Theme = {
         ...theme,
         background: { kind: 'image', url, fit: 'cover' },
@@ -306,7 +306,7 @@ export function ThemePanel() {
       customizeTheme(uploadedTheme);
       // Sin una canción activa, la personalización pertenece al tema seleccionado.
       if (workspaceTab === 'lyrics' && !activeSongId) saveTheme(uploadedTheme);
-      toast.success('Imagen subida y guardada en el tema.');
+      toast.success('Imagen guardada localmente en el tema.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo subir la imagen.';
       toast.error(message);
@@ -761,8 +761,8 @@ export function ThemePanel() {
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-white">
                   {imageUploadProgress === null
-                    ? 'Subir imagen a Firebase'
-                    : `Subiendo imagen... ${imageUploadProgress}%`}
+                    ? 'Guardar imagen en este dispositivo'
+                    : `Guardando imagen... ${imageUploadProgress}%`}
                 </span>
                 <span className="block text-[11px] text-white/40">JPG, PNG, WebP, GIF o AVIF · máximo 10 MB</span>
               </span>
@@ -775,17 +775,6 @@ export function ThemePanel() {
                 />
               </div>
             )}
-            <div>
-              <label className="label">O usar URL externa</label>
-              <input
-                className="input"
-                placeholder="https://..."
-                value={theme.background.url}
-                onChange={(e) =>
-                  updateBg({ kind: 'image', url: e.target.value, fit: 'cover' })
-                }
-              />
-            </div>
           </div>
         )}
       </section>

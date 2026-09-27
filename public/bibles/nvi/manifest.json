@@ -1,0 +1,11 @@
+{
+  "id": "nvi",
+  "translation": "Nueva Versión Internacional - Español",
+  "abbreviation": "NVI",
+  "language": "Español (América Latina)",
+  "source": "https://github.com/mrk214/bible-data-es-spa",
+  "copyright": "Santa Biblia, Nueva Versión Internacional® NVI® © 1999, 2015, 2022 por Biblica, Inc. Usado con permiso. Reservados todos los derechos en todo el mundo.",
+  "sourceVersion": 128,
+  "publisher": "Biblica, Inc.",
+  "books": 66
+}

@@ -9,15 +9,16 @@ export function buildScriptureSlides(
 ): RenderSlide[] {
   return verses.map((item, index) => {
     const bookName = bibleBookName(item.book, version.lang);
+    const verseLabel = item.verseEnd ? `${item.verse}–${item.verseEnd}` : `${item.verse}`;
     return {
-      id: `bible-${version.id}-${item.book}-${item.chapter}-${item.verse}`,
+      id: `bible-${version.id}-${item.book}-${item.chapter}-${verseLabel}`,
       blockId: `bible-${version.id}-${item.book}-${item.chapter}`,
       type: 'scripture',
-      label: `Versículo ${item.verse}`,
+      label: `Versículo ${verseLabel}`,
       lines: [item.text.trim()],
       partIndex: index,
       partCount: verses.length,
-      reference: `${bookName} ${item.chapter}:${item.verse} — ${version.abbr}`,
+      reference: `${bookName} ${item.chapter}:${verseLabel} — ${version.abbr}`,
       attribution: version.copyright,
     };
   });
