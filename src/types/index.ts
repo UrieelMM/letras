@@ -17,6 +17,12 @@ export interface LyricEmphasis {
   end: number;
 }
 
+/** Un fragmento de una selección, con offsets respecto al bloque o al slide. */
+export interface LyricSelectionAnimation extends LyricEmphasis {
+  groupId: string;
+  animation: TextAnimationConfig;
+}
+
 export interface LyricTypography {
   preset?: LyricTypographyPreset;
   applyToSection?: boolean;
@@ -36,6 +42,7 @@ export interface SlideBlock {
   lines: string[]; // líneas de texto crudas; una línea vacía crea un slide manual
   typography?: LyricTypography;
   textAnimation?: TextAnimationConfig;
+  selectionAnimations?: LyricSelectionAnimation[];
 }
 
 export interface Song {
@@ -93,7 +100,11 @@ export type TextRevealPreset =
   | 'curtain'
   | 'impact'
   | 'counterSlide'
-  | 'foldLetters';
+  | 'foldLetters'
+  | 'snapTurn'
+  | 'focusZoom'
+  | 'letterArc'
+  | 'sideWipe';
 
 // Movimiento continuo de las letras (se mantiene siempre, no solo al entrar)
 export type TextMotionPreset =
@@ -115,7 +126,11 @@ export type TextMotionPreset =
   | 'rippleText'
   | 'bobUnits'
   | 'wordFlow'
-  | 'wordPulse';
+  | 'wordPulse'
+  | 'doubleBeat'
+  | 'pendulumArc'
+  | 'rollingWave'
+  | 'letterTilt';
 
 export type TextAnimationSpeed = Exclude<LyricAnimationSpeed, 'off'>;
 
@@ -366,6 +381,7 @@ export interface RenderSlide {
   lines: string[];
   typography?: LyricTypography;
   textAnimation?: TextAnimationConfig;
+  selectionAnimations?: LyricSelectionAnimation[];
   partIndex: number;
   partCount: number;
   /** Sólo existe en slides bíblicos, p. ej. "Juan 3:16 — RV1909". */

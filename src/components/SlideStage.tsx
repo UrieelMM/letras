@@ -109,9 +109,10 @@ export function SlideStage({ live, replay = 0 }: Props) {
   const { theme, slide, blackout, showLogo, logoUrl, clearText } = live;
   const resolvedLogoUrl = useLocalMediaUrl(logoUrl);
   const typography = slide?.typography;
+  const selectionAnimations = slide?.selectionAnimations;
   const hasLyricStyle = hasLyricStyling(typography);
   const customAnimation = slide?.textAnimation ?? theme.textAnimation;
-  const useStyleAnimation = hasLyricStyle && !customAnimation;
+  const useStyleAnimation = !customAnimation && (hasLyricStyle || Boolean(selectionAnimations?.length));
   const animation = customAnimation ?? getThemeTextAnimation(theme);
   const reduceMotion = useReducedMotion();
   const t = useStyleAnimation || reduceMotion ? 'fade' : theme.transition;
@@ -291,11 +292,12 @@ export function SlideStage({ live, replay = 0 }: Props) {
                     }}
                     className={theme.color.shadow ? 'text-shadow-strong' : ''}
                   >
-                    {useStyleAnimation && typography ? (
+                    {useStyleAnimation ? (
                       <LyricText
                         key={replay}
                         lines={slide.lines}
-                        typography={typography}
+                        typography={hasLyricStyle ? typography : undefined}
+                        selectionAnimations={selectionAnimations}
                         reduceMotion={Boolean(reduceMotion)}
                       />
                     ) : (
@@ -304,6 +306,7 @@ export function SlideStage({ live, replay = 0 }: Props) {
                         lines={slide.lines}
                         animation={animation}
                         typography={hasLyricStyle ? typography : undefined}
+                        selectionAnimations={selectionAnimations}
                         reduceMotion={Boolean(reduceMotion)}
                         rainbow={theme.rainbowText}
                       />

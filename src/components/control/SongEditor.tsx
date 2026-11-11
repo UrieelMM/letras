@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { toast } from '../../store/toastStore';
 import { uid } from '../../lib/id';
-import { rebaseEmphasis } from '../../lib/lyricTypography';
+import { rebaseLyricRanges } from '../../lib/lyricTypography';
 import { BLOCK_LABELS } from '../../lib/slides';
 import type { LyricEmphasis, SlideBlock, SlideBlockType, Song } from '../../types';
 import { LyricTypographyEditor } from './LyricTypographyEditor';
@@ -51,13 +51,18 @@ export function SongEditor({ songId, onClose }: Props) {
   }
   function updateLyrics(block: SlideBlock, value: string, caret: number) {
     const typography = block.typography;
-    const lines = value.split('\n');
-    if (!typography?.emphasis?.length) {
-      setBlock(block.id, { lines });
-      return;
+    const before = block.lines.join('\n');
+    const patch: Partial<SlideBlock> = { lines: value.split('\n') };
+    if (typography?.emphasis?.length) {
+      patch.typography = {
+        ...typography,
+        emphasis: rebaseLyricRanges(typography.emphasis, before, value, caret),
+      };
     }
-    const emphasis = rebaseEmphasis(typography.emphasis, block.lines.join('\n'), value, caret);
-    setBlock(block.id, { lines, typography: { ...typography, emphasis } });
+    if (block.selectionAnimations?.length) {
+      patch.selectionAnimations = rebaseLyricRanges(block.selectionAnimations, before, value, caret);
+    }
+    setBlock(block.id, patch);
   }
   function addBlock() {
     setDraft((d) =>
@@ -214,6 +219,7 @@ export function SongEditor({ songId, onClose }: Props) {
                   onOpenChange={(open) => setTypographyBlockId(open ? block.id : null)}
                   onChange={(typography) => setBlock(block.id, { typography })}
                   onAnimationChange={(textAnimation) => setBlock(block.id, { textAnimation })}
+                  onSelectionAnimationsChange={(selectionAnimations) => setBlock(block.id, { selectionAnimations })}
                 />
               </div>
             ))}

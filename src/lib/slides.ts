@@ -38,16 +38,24 @@ export function buildBlockSlides(block: SlideBlock): { slide: RenderSlide; start
       partCount: groups.length,
     };
     if (block.textAnimation) slide.textAnimation = block.textAnimation;
+    if (block.selectionAnimations?.length) {
+      const selections = rangesInSlide(block.selectionAnimations, start, end);
+      if (selections.length) slide.selectionAnimations = selections;
+    }
     if (block.typography?.preset) {
       slide.typography = {
         ...block.typography,
-        emphasis: block.typography.emphasis
-          ?.filter((range) => range.start >= start && range.end <= end)
-          .map((range) => ({ start: range.start - start, end: range.end - start })),
+        emphasis: block.typography.emphasis && rangesInSlide(block.typography.emphasis, start, end),
       };
     }
     return { slide, start };
   });
+}
+
+function rangesInSlide<T extends { start: number; end: number }>(ranges: T[], start: number, end: number): T[] {
+  return ranges
+    .filter((range) => range.start >= start && range.end <= end)
+    .map((range) => ({ ...range, start: range.start - start, end: range.end - start }));
 }
 
 export const BLOCK_LABELS: Record<string, string> = {

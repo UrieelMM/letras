@@ -1,6 +1,10 @@
 import type { TextAnimationConfig, TextAnimationSpeed, TextMotionPreset, TextRevealPreset } from '../../types';
 
 const DYNAMIC_REVEALS = [
+  { value: 'snapTurn', label: 'Giro con impulso', description: 'Las palabras llegan en diagonal con un giro breve y se asientan.' },
+  { value: 'focusZoom', label: 'Enfoque de cámara', description: 'El texto se acerca y gana nitidez al asentarse.' },
+  { value: 'letterArc', label: 'Arco de letras', description: 'Las letras se abren en abanico y vuelven a alinearse.' },
+  { value: 'sideWipe', label: 'Barrido diagonal', description: 'Un corte diagonal revela el texto de izquierda a derecha.' },
   { value: 'curtain', label: 'Cortinilla', description: 'Cada línea se descubre desde abajo, como al levantar un telón.' },
   { value: 'impact', label: 'Impacto en cadena', description: 'Las palabras entran comprimidas y recuperan su forma con un rebote breve.' },
   { value: 'counterSlide', label: 'Cruce de líneas', description: 'Las líneas entran desde lados alternos.' },
@@ -8,6 +12,10 @@ const DYNAMIC_REVEALS = [
 ] as const;
 
 const DYNAMIC_MOTIONS = [
+  { value: 'doubleBeat', label: 'Doble acento', description: 'Dos pulsos breves seguidos de una pausa para leer.' },
+  { value: 'pendulumArc', label: 'Péndulo 3D', description: 'El texto recorre un arco corto en perspectiva y vuelve al centro.' },
+  { value: 'rollingWave', label: 'Cascada por palabras', description: 'Cada palabra sube y se asienta mientras la siguiente toma el relevo.' },
+  { value: 'letterTilt', label: 'Ola de letras 3D', description: 'Las letras se inclinan en secuencia y descansan en su posición original.' },
   { value: 'wordFlow', label: 'Ola por palabras', description: 'Las palabras suben y vuelven a su sitio en secuencia.' },
   { value: 'wordPulse', label: 'Pulso desde el centro', description: 'Las palabras se expanden suavemente desde el centro de la frase.' },
 ] as const;
@@ -105,7 +113,7 @@ export function TextAnimationFields({ value, onChange }: Props) {
           onChange={(event) => onChange({ ...value, motion: event.target.value as TextMotionPreset })}
         >
           <option value="none">Sin movimiento</option>
-          <optgroup label="Por palabras">
+          <optgroup label="Dinámicos">
             {DYNAMIC_MOTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}

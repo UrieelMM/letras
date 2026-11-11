@@ -81,12 +81,12 @@ export function mergeEmphasis(ranges: LyricEmphasis[]): LyricEmphasis[] {
 }
 
 /** Conserva las marcas intactas al editar el texto a su alrededor. */
-export function rebaseEmphasis(
-  ranges: LyricEmphasis[],
+export function rebaseLyricRanges<T extends LyricEmphasis>(
+  ranges: T[],
   before: string,
   after: string,
   caret: number,
-): LyricEmphasis[] {
+): T[] {
   if (!ranges.length || before === after) return ranges;
   const delta = after.length - before.length;
   const previousCaret = caret - delta;
@@ -106,29 +106,25 @@ export function rebaseEmphasis(
     if (range.end > start && range.start < oldEnd) return [];
     const shifted = range.end <= start
       ? range
-      : { start: range.start + delta, end: range.end + delta };
+      : { ...range, start: range.start + delta, end: range.end + delta };
     const beginsAtWord = shifted.start === 0 || /\s/.test(after[shifted.start - 1]);
     const endsAtWord = shifted.end === after.length || /\s/.test(after[shifted.end]);
     return beginsAtWord && endsAtWord ? [shifted] : [];
   });
 }
 
-export function splitEmphasizedLines(lines: string[], emphasis: LyricEmphasis[]) {
-  const sorted = mergeEmphasis(emphasis);
-  let offset = 0;
-  return lines.map((line) => {
-    const fragments: { text: string; accented: boolean }[] = [];
-    let cursor = 0;
-    for (const range of sorted) {
-      const start = range.start - offset;
-      const end = range.end - offset;
-      if (start < cursor || end > line.length || end <= start) continue;
-      if (start > cursor) fragments.push({ text: line.slice(cursor, start), accented: false });
-      fragments.push({ text: line.slice(start, end), accented: true });
-      cursor = end;
-    }
-    if (cursor < line.length) fragments.push({ text: line.slice(cursor), accented: false });
-    offset += line.length + 1;
-    return fragments;
-  });
+/** Divide el texto por rangos ordenados, incluso si un rango cruza el inicio del fragmento. */
+export function splitLyricText<T extends LyricEmphasis>(text: string, offset: number, ranges: T[]) {
+  const fragments: { text: string; start: number; range?: T }[] = [];
+  let cursor = 0;
+  for (const range of ranges) {
+    const start = Math.max(cursor, range.start - offset);
+    const end = Math.min(text.length, range.end - offset);
+    if (end <= start) continue;
+    if (start > cursor) fragments.push({ text: text.slice(cursor, start), start: offset + cursor });
+    fragments.push({ text: text.slice(start, end), start: offset + start, range });
+    cursor = end;
+  }
+  if (cursor < text.length) fragments.push({ text: text.slice(cursor), start: offset + cursor });
+  return fragments;
 }

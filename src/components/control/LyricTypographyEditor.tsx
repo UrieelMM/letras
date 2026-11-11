@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { FONT_OPTIONS } from '../../lib/fonts';
+import { uid } from '../../lib/id';
 import {
   getLyricPreset, hasLyricStyling, LYRIC_PRESETS, mergeEmphasis, selectionToEmphasis,
 } from '../../lib/lyricTypography';
 import { buildBlockSlides } from '../../lib/slides';
-import { getThemeTextAnimation } from '../../lib/textAnimation';
+import { DEFAULT_SELECTION_ANIMATION, getThemeTextAnimation, replaceSelectionAnimations } from '../../lib/textAnimation';
 import type {
-  LyricAnimationSpeed, LyricEmphasis, LyricTypography, LyricTypographyPreset, SlideBlock, TextAnimationConfig, Theme,
+  LyricAnimationSpeed, LyricEmphasis, LyricSelectionAnimation, LyricTypography,
+  LyricTypographyPreset, SlideBlock, TextAnimationConfig, Theme,
 } from '../../types';
 import { SlideStage } from '../SlideStage';
 import { TextAnimationFields } from './TextAnimationFields';
@@ -19,15 +21,17 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onChange: (typography: LyricTypography) => void;
   onAnimationChange: (animation: TextAnimationConfig | undefined) => void;
+  onSelectionAnimationsChange: (ranges: LyricSelectionAnimation[]) => void;
 }
 
 const PRESETS = Object.entries(LYRIC_PRESETS) as [LyricTypographyPreset, (typeof LYRIC_PRESETS)[LyricTypographyPreset]][];
 
 export function LyricTypographyEditor({
-  block, theme, selection, open, onOpenChange, onChange, onAnimationChange,
+  block, theme, selection, open, onOpenChange, onChange, onAnimationChange, onSelectionAnimationsChange,
 }: Props) {
   const [part, setPart] = useState(0);
   const [replay, setReplay] = useState(0);
+  const [animationGroupId, setAnimationGroupId] = useState<string | null>(null);
   const slides = useMemo(() => open ? buildBlockSlides(block) : [], [block, open]);
   const index = Math.min(part, Math.max(0, slides.length - 1));
   const slide = slides[index]?.slide ?? null;
@@ -39,6 +43,16 @@ export function LyricTypographyEditor({
   const lyrics = open || selection ? block.lines.join('\n') : '';
   const selected = selection ? selectionToEmphasis(lyrics, selection) : [];
   const panelId = 'typography-' + block.id;
+  const selectionAnimations = block.selectionAnimations ?? [];
+  const animationGroups = new Map<string, LyricSelectionAnimation[]>();
+  for (const range of selectionAnimations) {
+    const group = animationGroups.get(range.groupId);
+    if (group) group.push(range);
+    else animationGroups.set(range.groupId, [range]);
+  }
+  const activeGroup = animationGroupId ? animationGroups.get(animationGroupId) : undefined;
+  const groupText = (group: LyricSelectionAnimation[]) =>
+    group.map(({ start, end }) => lyrics.slice(start, end)).join(' · ');
 
   function selectPreset(next?: LyricTypographyPreset) {
     if (next === typography?.preset) return;
@@ -49,18 +63,40 @@ export function LyricTypographyEditor({
     onChange({ ...typography, ...patch });
   }
 
+  function showSlideAt(offset: number) {
+    const sectionSlides = open ? slides : buildBlockSlides(block);
+    const slideIndex = sectionSlides.findIndex(({ start, slide: item }) =>
+      offset >= start && offset < start + item.lines.join('\n').length,
+    );
+    if (slideIndex >= 0) setPart(slideIndex);
+  }
+
   function emphasizeSelection() {
     const first = selected[0];
     if (!first) return;
-    const sectionSlides = open ? slides : buildBlockSlides(block);
-    const slideIndex = sectionSlides.findIndex(({ start, slide: item }) =>
-      first.start >= start && first.start < start + item.lines.join('\n').length,
-    );
-    if (slideIndex >= 0) setPart(slideIndex);
+    showSlideAt(first.start);
     update({
       preset: typography?.preset ?? 'handwritten',
       emphasis: mergeEmphasis([...emphasis, ...selected]),
     });
+    setAnimationGroupId(null);
+    onOpenChange(true);
+  }
+
+  function animateSelection(targets: LyricEmphasis[]) {
+    if (!targets.length) return;
+    const existing = [...animationGroups.values()].find((group) =>
+      group.length === targets.length && targets.every(({ start, end }, index) =>
+        group[index].start === start && group[index].end === end,
+      ),
+    );
+    const groupId = existing?.[0].groupId ?? uid('animation-');
+    if (!existing) {
+      const ranges = targets.map((range) => ({ ...range, groupId, animation: DEFAULT_SELECTION_ANIMATION }));
+      onSelectionAnimationsChange(replaceSelectionAnimations(selectionAnimations, ranges, lyrics));
+    }
+    showSlideAt(targets[0].start);
+    setAnimationGroupId(groupId);
     onOpenChange(true);
   }
 
@@ -76,9 +112,20 @@ export function LyricTypographyEditor({
         </button>
         <button
           className="btn-soft !px-2 !py-1.5 !text-xs"
+          disabled={!selected.length}
+          onClick={() => animateSelection(selected)}
+        >
+          <span aria-hidden="true">↝</span>
+          Animar selección
+        </button>
+        <button
+          className="btn-soft !px-2 !py-1.5 !text-xs"
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
-          onClick={() => onOpenChange(!open)}
+          onClick={() => {
+            if (open && activeGroup) setAnimationGroupId(null);
+            else onOpenChange(!open);
+          }}
         >
           Tipografía
           <span className="text-white/60">{preset?.label ?? 'Del tema'}</span>
@@ -109,18 +156,47 @@ export function LyricTypographyEditor({
               {emphasis.map((range) => {
                 const text = lyrics.slice(range.start, range.end);
                 return (
-                  <li key={range.start} className="min-w-0 max-w-full">
+                  <li key={range.start} className="flex min-w-0 max-w-full items-center gap-0.5">
                     <button
-                      className="btn-soft max-w-full !gap-1 !px-2 !py-1 !text-xs"
+                      className="btn-soft min-w-0 !gap-1 !px-2 !py-1 !text-xs"
+                      aria-label={'Animar texto destacado: ' + text}
+                      onClick={() => animateSelection([range])}
+                    >
+                      <span aria-hidden="true">↝</span>
+                      <span className="truncate">{text}</span>
+                    </button>
+                    <button
+                      className="btn-ghost !px-1.5 !py-1 !text-xs"
                       aria-label={'Quitar énfasis de ' + text}
                       onClick={() => update({ emphasis: emphasis.filter((item) => item !== range) })}
                     >
-                      <span className="truncate">{text}</span>
                       <span aria-hidden="true">×</span>
                     </button>
                   </li>
                 );
               })}
+            </ul>
+          )}
+
+          {animationGroups.size > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label="Selecciones animadas">
+              {[...animationGroups].map(([id, group]) => (
+                <li key={id} className="min-w-0 max-w-full">
+                  <button
+                    className={'btn-soft max-w-full !gap-1.5 !px-2 !py-1 !text-xs' +
+                      (id === animationGroupId ? ' !bg-accent/20 !text-accent-soft' : '')}
+                    aria-label={'Editar animación de ' + groupText(group)}
+                    aria-pressed={id === animationGroupId}
+                    onClick={() => {
+                      setAnimationGroupId(id === animationGroupId ? null : id);
+                      showSlideAt(group[0].start);
+                    }}
+                  >
+                    <span aria-hidden="true">↝</span>
+                    <span className="truncate">{groupText(group)}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
           )}
 
@@ -145,7 +221,8 @@ export function LyricTypographyEditor({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
                   className="btn-soft !px-2 !py-1.5 !text-xs"
-                  disabled={!slide || (!customAnimation && hasLyricStyling(slide.typography) && typography?.speed === 'off')}
+                  disabled={!slide || (!slide.selectionAnimations?.length && !customAnimation
+                    && hasLyricStyling(slide.typography) && typography?.speed === 'off')}
                   onClick={() => setReplay((current) => current + 1)}
                 >
                   ↻ Reproducir
@@ -174,7 +251,27 @@ export function LyricTypographyEditor({
               </div>
             </div>
 
-            {preset && (
+            {activeGroup ? (
+              <fieldset className="min-w-0 space-y-2">
+                <legend className="text-xs font-semibold text-accent-soft">Animación de la selección</legend>
+                <p className="break-words text-sm font-medium text-white">{groupText(activeGroup)}</p>
+                <TextAnimationFields
+                  value={activeGroup[0].animation}
+                  onChange={(animation) => onSelectionAnimationsChange(selectionAnimations.map((range) =>
+                    range.groupId === animationGroupId ? { ...range, animation } : range,
+                  ))}
+                />
+                <button
+                  className="btn-ghost !px-2 !py-1 !text-xs"
+                  onClick={() => {
+                    onSelectionAnimationsChange(selectionAnimations.filter((range) => range.groupId !== animationGroupId));
+                    setAnimationGroupId(null);
+                  }}
+                >
+                  Quitar animación de la selección
+                </button>
+              </fieldset>
+            ) : preset && (
               <div className="min-w-0 space-y-3">
                 <label className="flex items-center gap-2 text-xs text-white/80">
                   <input
@@ -242,7 +339,7 @@ export function LyricTypographyEditor({
             )}
           </div>
           <fieldset className="space-y-3 border-t border-white/10 pt-2">
-            <legend className="pr-2 text-xs font-semibold text-white/80">Animación de texto</legend>
+            <legend className="pr-2 text-xs font-semibold text-white/80">Animación de toda la sección</legend>
             <label className="flex items-center gap-2 text-xs text-white/80">
               <input
                 type="checkbox"
@@ -252,7 +349,7 @@ export function LyricTypographyEditor({
                   event.target.checked ? getThemeTextAnimation(theme) : undefined,
                 )}
               />
-              Personalizar animación de esta sección
+              Personalizar toda la sección
             </label>
             {sectionAnimation && (
               <TextAnimationFields value={sectionAnimation} onChange={onAnimationChange} />
