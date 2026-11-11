@@ -229,6 +229,7 @@ export function ThemePanel() {
   const themes = useStore((s) => s.themes);
   const songs = useStore((s) => s.songs);
   const activeSongId = useStore((s) => s.activeSongId);
+  const setEditingSong = useStore((s) => s.setEditingSong);
   const workspaceTab = useStore((s) => s.workspaceTab);
   const slides = useStore((s) => s.slides);
   const customizeTheme = useStore((s) => s.customizeTheme);
@@ -447,9 +448,19 @@ export function ThemePanel() {
 
       {/* Tipografía */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-accent-soft">
-          Tipografía
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-accent-soft">
+            Tipografía
+          </h3>
+          {workspaceTab === 'lyrics' && activeSongId && (
+            <button
+              className="btn-soft !px-2 !py-1 !text-xs"
+              onClick={() => setEditingSong(activeSongId)}
+            >
+              Destacar palabras
+            </button>
+          )}
+        </div>
 
         <div>
           <label className="label">Fuente (Google Fonts)</label>

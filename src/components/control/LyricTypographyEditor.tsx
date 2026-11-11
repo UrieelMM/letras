@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { FONT_OPTIONS } from '../../lib/fonts';
-import { getLyricPreset, LYRIC_PRESETS, mergeEmphasis, selectionToEmphasis } from '../../lib/lyricTypography';
+import {
+  getLyricPreset, hasLyricStyling, LYRIC_PRESETS, mergeEmphasis, selectionToEmphasis,
+} from '../../lib/lyricTypography';
 import { buildBlockSlides } from '../../lib/slides';
 import type {
   LyricAnimationSpeed, LyricEmphasis, LyricTypography, LyricTypographyPreset, SlideBlock, Theme,
@@ -10,27 +12,30 @@ import { SlideStage } from '../SlideStage';
 interface Props {
   block: SlideBlock;
   theme: Theme;
-  selection: LyricEmphasis;
+  selection: LyricEmphasis | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onChange: (typography: LyricTypography) => void;
 }
 
 const PRESETS = Object.entries(LYRIC_PRESETS) as [LyricTypographyPreset, (typeof LYRIC_PRESETS)[LyricTypographyPreset]][];
 
-export function LyricTypographyEditor({ block, theme, selection, onChange }: Props) {
+export function LyricTypographyEditor({ block, theme, selection, open, onOpenChange, onChange }: Props) {
   const [part, setPart] = useState(0);
   const [replay, setReplay] = useState(0);
-  const slides = useMemo(() => buildBlockSlides(block), [block]);
+  const slides = useMemo(() => open ? buildBlockSlides(block) : [], [block, open]);
   const index = Math.min(part, Math.max(0, slides.length - 1));
   const slide = slides[index]?.slide ?? null;
   const typography = block.typography;
   const preset = getLyricPreset(typography);
   const emphasis = typography?.emphasis ?? [];
-  const lyrics = block.lines.join('\n');
-  const selected = selectionToEmphasis(lyrics, selection);
+  const lyrics = open || selection ? block.lines.join('\n') : '';
+  const selected = selection ? selectionToEmphasis(lyrics, selection) : [];
+  const panelId = 'typography-' + block.id;
 
   function selectPreset(next?: LyricTypographyPreset) {
     if (next === typography?.preset) return;
-    onChange({ preset: next, speed: typography?.speed, emphasis });
+    onChange({ preset: next, speed: typography?.speed, applyToSection: typography?.applyToSection, emphasis });
   }
 
   function update(patch: Partial<LyricTypography>) {
@@ -40,39 +45,59 @@ export function LyricTypographyEditor({ block, theme, selection, onChange }: Pro
   function emphasizeSelection() {
     const first = selected[0];
     if (!first) return;
-    const slideIndex = slides.findIndex(({ start, slide: item }) =>
+    const sectionSlides = open ? slides : buildBlockSlides(block);
+    const slideIndex = sectionSlides.findIndex(({ start, slide: item }) =>
       first.start >= start && first.start < start + item.lines.join('\n').length,
     );
     if (slideIndex >= 0) setPart(slideIndex);
-    update({ emphasis: mergeEmphasis([...emphasis, ...selected]) });
+    update({
+      preset: typography?.preset ?? 'handwritten',
+      emphasis: mergeEmphasis([...emphasis, ...selected]),
+    });
+    onOpenChange(true);
   }
 
   return (
-    <div className="mt-3 space-y-3 border-t border-white/10 pt-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Estilo tipográfico">
-        <PresetButton active={!preset} label="Del tema" onClick={() => selectPreset()} />
-        {PRESETS.map(([value, style]) => (
-          <PresetButton
-            key={value}
-            active={typography?.preset === value}
-            label={style.label}
-            family={style.family}
-            weight={style.weight}
-            onClick={() => selectPreset(value)}
-          />
-        ))}
+    <div className="mt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          className="btn-accent !px-2 !py-1.5 !text-xs"
+          disabled={!selected.length}
+          onClick={emphasizeSelection}
+        >
+          Destacar selección
+        </button>
+        <button
+          className="btn-soft !px-2 !py-1.5 !text-xs"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          onClick={() => onOpenChange(!open)}
+        >
+          Tipografía
+          <span className="text-white/60">{preset?.label ?? 'Del tema'}</span>
+        </button>
+        {!selected.length && !emphasis.length && (
+          <p className="text-xs text-white/55">Selecciona palabras en el cuadro de letra.</p>
+        )}
       </div>
 
-      {preset && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            className="btn-soft !px-2 !py-1.5 !text-xs"
-            disabled={!selected.length}
-            onClick={emphasizeSelection}
-          >
-            Destacar selección
-          </button>
-          {emphasis.length ? (
+      {open && (
+        <div id={panelId} className="mt-3 space-y-3 border-t border-white/10 pt-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Estilo tipográfico">
+            <PresetButton active={!preset} label="Del tema" onClick={() => selectPreset()} />
+            {PRESETS.map(([value, style]) => (
+              <PresetButton
+                key={value}
+                active={typography?.preset === value}
+                label={style.label}
+                family={style.family}
+                weight={style.weight}
+                onClick={() => selectPreset(value)}
+              />
+            ))}
+          </div>
+
+          {preset && emphasis.length > 0 && (
             <ul className="flex flex-wrap gap-1.5" aria-label="Fragmentos destacados">
               {emphasis.map((range) => {
                 const text = lyrics.slice(range.start, range.end);
@@ -90,116 +115,125 @@ export function LyricTypographyEditor({ block, theme, selection, onChange }: Pro
                 );
               })}
             </ul>
-          ) : (
-            <p className="text-xs text-white/55">Selecciona palabras o líneas en la letra para destacarlas.</p>
           )}
-        </div>
-      )}
 
-      <div className="grid items-start gap-4 md:grid-cols-2">
-        <div className="min-w-0 space-y-2">
-          <div
-            className="aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black"
-            role="region"
-            aria-label="Vista previa de la sección"
-          >
-            {slide ? (
-              <SlideStage
-                live={{ slide, theme, blackout: false, showLogo: false, clearText: false }}
-                replay={replay}
-              />
-            ) : (
-              <p className="grid h-full place-items-center px-3 text-center text-xs text-white/60">
-                Escribe la letra para ver la diapositiva.
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <button
-              className="btn-soft !px-2 !py-1.5 !text-xs"
-              disabled={!slide || (Boolean(preset) && typography?.speed === 'off')}
-              onClick={() => setReplay((current) => current + 1)}
-            >
-              ↻ Reproducir
-            </button>
-            {slides.length > 1 && (
-              <div className="flex items-center gap-1 text-xs text-white/60">
+          <div className="grid items-start gap-4 md:grid-cols-2">
+            <div className="min-w-0 space-y-2">
+              <div
+                className="aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black"
+                role="region"
+                aria-label="Vista previa de la sección"
+              >
+                {slide ? (
+                  <SlideStage
+                    live={{ slide, theme, blackout: false, showLogo: false, clearText: false }}
+                    replay={replay}
+                  />
+                ) : (
+                  <p className="grid h-full place-items-center px-3 text-center text-xs text-white/60">
+                    Escribe la letra para ver la diapositiva.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
-                  className="btn-ghost !px-2 !py-1"
-                  aria-label="Diapositiva anterior de la sección"
-                  disabled={index === 0}
-                  onClick={() => setPart(index - 1)}
+                  className="btn-soft !px-2 !py-1.5 !text-xs"
+                  disabled={!slide || (hasLyricStyling(slide.typography) && typography?.speed === 'off')}
+                  onClick={() => setReplay((current) => current + 1)}
                 >
-                  ‹
+                  ↻ Reproducir
                 </button>
-                <span aria-live="polite">{index + 1} / {slides.length}</span>
-                <button
-                  className="btn-ghost !px-2 !py-1"
-                  aria-label="Diapositiva siguiente de la sección"
-                  disabled={index === slides.length - 1}
-                  onClick={() => setPart(index + 1)}
-                >
-                  ›
-                </button>
+                {slides.length > 1 && (
+                  <div className="flex items-center gap-1 text-xs text-white/60">
+                    <button
+                      className="btn-ghost !px-2 !py-1"
+                      aria-label="Diapositiva anterior de la sección"
+                      disabled={index === 0}
+                      onClick={() => setPart(index - 1)}
+                    >
+                      ‹
+                    </button>
+                    <span aria-live="polite">{index + 1} / {slides.length}</span>
+                    <button
+                      className="btn-ghost !px-2 !py-1"
+                      aria-label="Diapositiva siguiente de la sección"
+                      disabled={index === slides.length - 1}
+                      onClick={() => setPart(index + 1)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {preset && (
+              <div className="min-w-0 space-y-3">
+                <label className="flex items-center gap-2 text-xs text-white/80">
+                  <input
+                    type="checkbox"
+                    className="accent-accent"
+                    checked={typography?.applyToSection ?? false}
+                    onChange={(e) => update({ applyToSection: e.target.checked })}
+                  />
+                  Aplicar estilo a toda la sección
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {typography?.applyToSection && (
+                    <FontPicker
+                      label="Fuente de la sección"
+                      value={typography?.family ?? preset.family}
+                      onChange={(family) => update({ family })}
+                    />
+                  )}
+                  <FontPicker
+                    label="Fuente de lo destacado"
+                    value={typography?.accentFamily ?? preset.accentFamily}
+                    onChange={(accentFamily) => update({ accentFamily })}
+                  />
+                  <label>
+                    <span className="label">Velocidad</span>
+                    <select
+                      className="input !px-2 !py-1.5 !text-xs"
+                      value={typography?.speed ?? 'normal'}
+                      onChange={(e) => update({ speed: e.target.value as LyricAnimationSpeed })}
+                    >
+                      <option value="off">Sin animación</option>
+                      <option value="slow">Suave</option>
+                      <option value="normal">Normal</option>
+                      <option value="fast">Rápida</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span className="label">Color de énfasis</span>
+                    <input
+                      type="color"
+                      className="input h-[31px] cursor-pointer !px-1 !py-0.5"
+                      value={typography?.accentColor ?? preset.accentColor}
+                      onChange={(e) => update({ accentColor: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="label flex justify-between gap-2">
+                    Tamaño de énfasis
+                    <span>{Math.round((typography?.accentScale ?? preset.accentScale) * 100)}%</span>
+                  </span>
+                  <input
+                    type="range"
+                    className="w-full cursor-pointer accent-accent"
+                    min={1}
+                    max={1.8}
+                    step={0.05}
+                    value={typography?.accentScale ?? preset.accentScale}
+                    onChange={(e) => update({ accentScale: e.target.valueAsNumber })}
+                  />
+                </label>
               </div>
             )}
           </div>
         </div>
-
-        {preset && (
-          <div className="min-w-0 space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <FontPicker
-                label="Fuente principal"
-                value={typography?.family ?? preset.family}
-                onChange={(family) => update({ family })}
-              />
-              <FontPicker
-                label="Fuente de énfasis"
-                value={typography?.accentFamily ?? preset.accentFamily}
-                onChange={(accentFamily) => update({ accentFamily })}
-              />
-              <label>
-                <span className="label">Velocidad</span>
-                <select
-                  className="input !px-2 !py-1.5 !text-xs"
-                  value={typography?.speed ?? 'normal'}
-                  onChange={(e) => update({ speed: e.target.value as LyricAnimationSpeed })}
-                >
-                  <option value="off">Sin animación</option>
-                  <option value="slow">Suave</option>
-                  <option value="normal">Normal</option>
-                  <option value="fast">Rápida</option>
-                </select>
-              </label>
-              <label>
-                <span className="label">Color de énfasis</span>
-                <input
-                  type="color"
-                  className="input h-[31px] cursor-pointer !px-1 !py-0.5"
-                  value={typography?.accentColor ?? preset.accentColor}
-                  onChange={(e) => update({ accentColor: e.target.value })}
-                />
-              </label>
-            </div>
-            <label className="block">
-              <span className="label flex justify-between gap-2">
-                Tamaño de énfasis
-                <span>{Math.round((typography?.accentScale ?? preset.accentScale) * 100)}%</span>
-              </span>
-              <input
-                type="range"
-                className="w-full cursor-pointer accent-accent"
-                min={1}
-                max={1.8}
-                step={0.05}
-                value={typography?.accentScale ?? preset.accentScale}
-                onChange={(e) => update({ accentScale: e.target.valueAsNumber })}
-              />
-            </label>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

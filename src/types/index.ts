@@ -19,6 +19,7 @@ export interface LyricEmphasis {
 
 export interface LyricTypography {
   preset?: LyricTypographyPreset;
+  applyToSection?: boolean;
   family?: string;
   accentFamily?: string;
   accentColor?: string;

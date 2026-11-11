@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { toast } from '../../store/toastStore';
 import { uid } from '../../lib/id';
-import { getLyricPreset, rebaseEmphasis } from '../../lib/lyricTypography';
+import { rebaseEmphasis } from '../../lib/lyricTypography';
 import { BLOCK_LABELS } from '../../lib/slides';
 import type { LyricEmphasis, SlideBlock, SlideBlockType, Song } from '../../types';
 import { LyricTypographyEditor } from './LyricTypographyEditor';
@@ -206,22 +206,14 @@ export function SongEditor({ songId, onClose }: Props) {
                     setSelection({ blockId: block.id, start: selectionStart, end: selectionEnd });
                   }}
                 />
-                <button
-                  className="btn-soft mt-2 !px-2 !py-1.5 !text-xs"
-                  aria-expanded={typographyBlockId === block.id}
-                  onClick={() => setTypographyBlockId(typographyBlockId === block.id ? null : block.id)}
-                >
-                  Tipografía
-                  <span className="text-white/60">{getLyricPreset(block.typography)?.label ?? 'Del tema'}</span>
-                </button>
-                {typographyBlockId === block.id && (
-                  <LyricTypographyEditor
-                    block={block}
-                    theme={theme}
-                    selection={selection?.blockId === block.id ? selection : { start: 0, end: 0 }}
-                    onChange={(typography) => setBlock(block.id, { typography })}
-                  />
-                )}
+                <LyricTypographyEditor
+                  block={block}
+                  theme={theme}
+                  selection={selection?.blockId === block.id ? selection : null}
+                  open={typographyBlockId === block.id}
+                  onOpenChange={(open) => setTypographyBlockId(open ? block.id : null)}
+                  onChange={(typography) => setBlock(block.id, { typography })}
+                />
               </div>
             ))}
           </div>

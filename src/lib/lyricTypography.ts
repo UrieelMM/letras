@@ -44,6 +44,10 @@ export function getLyricPreset(typography?: LyricTypography): Preset | undefined
   return typography?.preset ? LYRIC_PRESETS[typography.preset] : undefined;
 }
 
+export function hasLyricStyling(typography?: LyricTypography): boolean {
+  return Boolean(getLyricPreset(typography) && (typography?.applyToSection || typography?.emphasis?.length));
+}
+
 /** Amplía la selección a palabras completas y crea un rango independiente por línea. */
 export function selectionToEmphasis(text: string, selection: LyricEmphasis): LyricEmphasis[] {
   if (selection.start >= selection.end) return [];

@@ -19,7 +19,7 @@ interface Props {
 
 export function LyricText({ lines, typography, reduceMotion }: Props) {
   const root = useRef<HTMLDivElement>(null);
-  const { preset, speed, emphasis } = typography;
+  const { preset, speed, emphasis, applyToSection } = typography;
   const style = getLyricPreset(typography);
   const content = useMemo(() => splitEmphasizedLines(lines, emphasis ?? []), [lines, emphasis]);
 
@@ -34,7 +34,7 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
       const entrance = gsap.timeline().timeScale(SPEEDS[speed ?? 'normal'] ?? 1);
 
       if (preset === 'comic') {
-        entrance.from(lineNodes, {
+        if (applyToSection) entrance.from(lineNodes, {
           opacity: 0, y: '0.24em', scale: 0.94, duration: 0.32,
           ease: 'power3.out', stagger: { amount: 0.18 },
         });
@@ -43,7 +43,7 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
           ease: 'back.out(2.5)', stagger: { amount: 0.22 },
         }, 0.15);
       } else if (preset === 'handwritten') {
-        entrance.from(lineNodes, {
+        if (applyToSection) entrance.from(lineNodes, {
           opacity: 0, y: '0.22em', duration: 0.46,
           ease: 'power2.out', stagger: { amount: 0.2 },
         });
@@ -55,7 +55,7 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
           scaleX: 0, duration: 0.3, ease: 'power2.out', stagger: { amount: 0.14 },
         }, 0.42);
       } else {
-        entrance.from(lineNodes, {
+        if (applyToSection) entrance.from(lineNodes, {
           opacity: 0, y: '0.18em', duration: 0.42,
           ease: 'power3.out', stagger: { amount: 0.2 },
         });
@@ -67,7 +67,7 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
     }, element);
 
     return () => context.revert();
-  }, [content, preset, reduceMotion, speed]);
+  }, [applyToSection, content, preset, reduceMotion, speed]);
 
   if (!style) return null;
 
@@ -76,12 +76,12 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
 
   return (
     <div
-      className={'lyric-text lyric-' + preset}
+      className={`lyric-text lyric-${preset}${applyToSection ? ' lyric-section' : ''}`}
       ref={root}
-      style={{
+      style={applyToSection ? {
         fontFamily: '"' + family + '", system-ui, sans-serif',
         fontWeight: family === style.family ? style.weight : 400,
-      }}
+      } : undefined}
     >
       {content.map((line, index) => (
         <div className="lyric-line" key={index}>

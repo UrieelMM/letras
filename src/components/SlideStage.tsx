@@ -6,7 +6,7 @@ import { GsapText } from './GsapText';
 import { LyricText } from './LyricText';
 import { OverlayEffect } from './OverlayEffect';
 import { loadFont } from '../lib/fonts';
-import { getLyricPreset } from '../lib/lyricTypography';
+import { hasLyricStyling } from '../lib/lyricTypography';
 import appLogo from '../assets/3.png';
 import { useLocalMediaUrl } from '../media/useLocalMediaUrl';
 
@@ -108,7 +108,7 @@ export function SlideStage({ live, replay = 0 }: Props) {
   const { theme, slide, blackout, showLogo, logoUrl, clearText } = live;
   const resolvedLogoUrl = useLocalMediaUrl(logoUrl);
   const typography = slide?.typography;
-  const hasLyricStyle = Boolean(getLyricPreset(typography));
+  const hasLyricStyle = hasLyricStyling(typography);
   const reduceMotion = useReducedMotion();
   const t = hasLyricStyle ? 'fade' : theme.transition;
   const referenceStyle = theme.reference ?? { show: true, position: 'bottom' as const, sizeVw: 1.25 };

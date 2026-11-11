@@ -2,11 +2,15 @@
   padding: 0.18em 0.24em;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.lyric-section,
+.lyric-accent {
   font-synthesis: none;
   letter-spacing: normal;
 }
 
-.lyric-line + .lyric-line {
+.lyric-section .lyric-line + .lyric-line {
   margin-top: 0.08em;
 }
 
@@ -17,7 +21,8 @@
   line-height: 1;
 }
 
-.lyric-handwritten {
+.lyric-handwritten.lyric-section,
+.lyric-handwritten .lyric-accent {
   text-transform: none;
 }
 
@@ -47,7 +52,8 @@
   rotate: -3.5deg;
 }
 
-.lyric-comic {
+.lyric-comic.lyric-section,
+.lyric-comic .lyric-accent {
   text-transform: uppercase;
   letter-spacing: 0.025em;
   -webkit-text-stroke: 0.037em #151124;
