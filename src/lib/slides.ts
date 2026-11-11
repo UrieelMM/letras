@@ -37,6 +37,7 @@ export function buildBlockSlides(block: SlideBlock): { slide: RenderSlide; start
       partIndex,
       partCount: groups.length,
     };
+    if (block.textAnimation) slide.textAnimation = block.textAnimation;
     if (block.typography?.preset) {
       slide.typography = {
         ...block.typography,

@@ -35,6 +35,7 @@ export interface SlideBlock {
   label?: string; // "Estrofa 1", "Coro"...
   lines: string[]; // líneas de texto crudas; una línea vacía crea un slide manual
   typography?: LyricTypography;
+  textAnimation?: TextAnimationConfig;
 }
 
 export interface Song {
@@ -88,7 +89,11 @@ export type TextRevealPreset =
   | 'swing'
   | 'glitch'
   | 'waveText'
-  | 'expand';
+  | 'expand'
+  | 'curtain'
+  | 'impact'
+  | 'counterSlide'
+  | 'foldLetters';
 
 // Movimiento continuo de las letras (se mantiene siempre, no solo al entrar)
 export type TextMotionPreset =
@@ -108,7 +113,17 @@ export type TextMotionPreset =
   | 'shimmer'
   | 'zoomSlow'
   | 'rippleText'
-  | 'bobUnits';
+  | 'bobUnits'
+  | 'wordFlow'
+  | 'wordPulse';
+
+export type TextAnimationSpeed = Exclude<LyricAnimationSpeed, 'off'>;
+
+export interface TextAnimationConfig {
+  reveal: TextRevealPreset;
+  motion: TextMotionPreset;
+  speed: TextAnimationSpeed;
+}
 
 export type AnimatedBgPreset =
   | 'meshGradient'
@@ -307,6 +322,7 @@ export interface Theme {
   transition: TransitionPreset;
   textReveal: TextRevealPreset;
   textMotion?: TextMotionPreset; // animación continua de las letras
+  textAnimation?: TextAnimationConfig;
   background: BackgroundConfig;
   overlay?: OverlayEffectConfig; // efecto animado sobre el fondo
   contrast: {
@@ -349,6 +365,7 @@ export interface RenderSlide {
   label?: string;
   lines: string[];
   typography?: LyricTypography;
+  textAnimation?: TextAnimationConfig;
   partIndex: number;
   partCount: number;
   /** Sólo existe en slides bíblicos, p. ej. "Juan 3:16 — RV1909". */

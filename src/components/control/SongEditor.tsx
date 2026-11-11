@@ -213,6 +213,7 @@ export function SongEditor({ songId, onClose }: Props) {
                   open={typographyBlockId === block.id}
                   onOpenChange={(open) => setTypographyBlockId(open ? block.id : null)}
                   onChange={(typography) => setBlock(block.id, { typography })}
+                  onAnimationChange={(textAnimation) => setBlock(block.id, { textAnimation })}
                 />
               </div>
             ))}

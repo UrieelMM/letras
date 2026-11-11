@@ -2,7 +2,9 @@ import { useRef, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { toast } from '../../store/toastStore';
 import { SlideStage } from '../SlideStage';
+import { TextAnimationFields } from './TextAnimationFields';
 import { FONT_OPTIONS, loadFont } from '../../lib/fonts';
+import { getThemeTextAnimation } from '../../lib/textAnimation';
 import { REMOVED_BG_PRESETS, REMOVED_THEME_IDS } from '../../lib/removedThemes';
 import { REACT_BITS_PRESETS, REACT_BITS_THEME_IDS } from '../../lib/reactBitsThemes';
 import { saveThemeImageLocally } from '../../media/localMedia';
@@ -12,8 +14,6 @@ import type {
   LiveState,
   OverlayEffectPreset,
   RenderSlide,
-  TextMotionPreset,
-  TextRevealPreset,
   Theme,
   TransitionPreset,
 } from '../../types';
@@ -47,47 +47,14 @@ const TRANSITIONS: { value: TransitionPreset; label: string }[] = [
   { value: 'riseScale', label: 'Subir + escala' },
 ];
 
-const MOTIONS: { value: TextMotionPreset; label: string }[] = [
-  { value: 'none', label: 'Sin movimiento' },
-  { value: 'float', label: 'Flotar' },
-  { value: 'sway', label: 'Vaivén' },
-  { value: 'pulse', label: 'Pulso' },
-  { value: 'breathe', label: 'Respirar' },
-  { value: 'wave', label: 'Ola' },
-  { value: 'glow', label: 'Brillo' },
-  { value: 'drift', label: 'Deriva' },
-  { value: 'tilt', label: 'Inclinación 3D' },
-  { value: 'wobble', label: 'Bamboleo' },
-  { value: 'heartbeat', label: 'Latido' },
-  { value: 'jelly', label: 'Gelatina' },
-  { value: 'orbit', label: 'Órbita' },
-  { value: 'shimmer', label: 'Destello' },
-  { value: 'zoomSlow', label: 'Zoom lento' },
-  { value: 'rippleText', label: 'Onda continua' },
-  { value: 'bobUnits', label: 'Vaivén por unidad' },
-];
-
-const REVEALS: { value: TextRevealPreset; label: string }[] = [
-  { value: 'wordsUp', label: 'Palabra por palabra' },
-  { value: 'charsUp', label: 'Letra por letra' },
-  { value: 'typewriter', label: 'Máquina de escribir' },
-  { value: 'linesUp', label: 'Línea por línea' },
-  { value: 'bounce', label: 'Rebote' },
-  { value: 'pop', label: 'Pop' },
-  { value: 'dance', label: 'Baile' },
-  { value: 'fromLeft', label: 'Desde la izquierda' },
-  { value: 'fromRight', label: 'Desde la derecha' },
-  { value: 'zoomIn', label: 'Acercamiento' },
-  { value: 'flip', label: 'Voltear' },
-  { value: 'blurWords', label: 'Desenfoque por palabra' },
-  { value: 'dropIn', label: 'Caída' },
-  { value: 'swing', label: 'Columpio' },
-  { value: 'glitch', label: 'Glitch' },
-  { value: 'waveText', label: 'Ola' },
-  { value: 'expand', label: 'Expandir' },
-  { value: 'fade', label: 'Aparición suave' },
-  { value: 'none', label: 'Sin animación' },
-];
+const SAMPLE_SLIDE: RenderSlide = {
+  id: 'sample',
+  blockId: 'sample',
+  type: 'verse',
+  lines: ['Texto de ejemplo', 'para previsualizar el tema'],
+  partIndex: 0,
+  partCount: 1,
+};
 
 const ALL_ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = [
   { value: 'meshGradient', label: 'Mesh gradiente' },
@@ -225,9 +192,10 @@ export function ThemePanel() {
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [highlightedThemeIndex, setHighlightedThemeIndex] = useState(0);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
+  const [previewReplay, setPreviewReplay] = useState(0);
+  const previewRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const themes = useStore((s) => s.themes);
-  const songs = useStore((s) => s.songs);
   const activeSongId = useStore((s) => s.activeSongId);
   const setEditingSong = useStore((s) => s.setEditingSong);
   const workspaceTab = useStore((s) => s.workspaceTab);
@@ -253,25 +221,11 @@ export function ThemePanel() {
       )
     : visibleThemes;
 
-  const song = songs.find((s) => s.id === activeSongId) ?? null;
   const theme = themeForPresentation();
 
-  const fallbackSlide: RenderSlide = {
-    id: 'sample',
-    blockId: 'sample',
-    type: 'verse',
-    lines: workspaceTab === 'lyrics' && song?.blocks[0]
-      ? song.blocks[0].lines.slice(0, theme.maxLinesPerSlide)
-      : [
-      'Texto de ejemplo',
-      'para previsualizar el tema',
-    ],
-    partIndex: 0,
-    partCount: 1,
-  };
-  const sampleSlide = workspaceTab === 'bible' && slides[0] ? slides[0] : fallbackSlide;
+  const sampleSlide = slides[0] ?? SAMPLE_SLIDE;
   const previewLive: LiveState = {
-    slide: sampleSlide,
+    slide: { ...sampleSlide, textAnimation: undefined },
     theme,
     blackout: false,
     showLogo: false,
@@ -320,8 +274,16 @@ export function ThemePanel() {
   return (
     <div className="h-full space-y-5 overflow-y-auto p-4">
       {/* Vista previa del tema */}
-      <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10">
-        <SlideStage live={previewLive} />
+      <div ref={previewRef} role="region" aria-label="Vista previa del tema">
+        <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10">
+          <SlideStage live={previewLive} replay={previewReplay} />
+        </div>
+        <button
+          className="btn-ghost mt-1 !px-2 !py-1 !text-xs"
+          onClick={() => setPreviewReplay((value) => value + 1)}
+        >
+          ↻ Repetir animación
+        </button>
       </div>
 
       {/* Selector de tema */}
@@ -629,37 +591,28 @@ export function ThemePanel() {
 
       {/* Animación */}
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-accent-soft">
-          Animación de texto
-        </h3>
-        <div>
-          <label className="label">Revelado de letras (entrada)</label>
-          <select
-            className="input"
-            value={theme.textReveal ?? 'wordsUp'}
-            onChange={(e) => update({ textReveal: e.target.value as TextRevealPreset })}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-accent-soft">
+            Animación de texto
+          </h3>
+          <button
+            className="btn-soft !px-2 !py-1 !text-xs"
+            onClick={() => {
+              previewRef.current?.scrollIntoView({ block: 'start' });
+              setPreviewReplay((value) => value + 1);
+            }}
           >
-            {REVEALS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+            Ver animación
+          </button>
         </div>
-        <div>
-          <label className="label">Movimiento continuo (todo el tiempo)</label>
-          <select
-            className="input"
-            value={theme.textMotion ?? 'none'}
-            onChange={(e) => update({ textMotion: e.target.value as TextMotionPreset })}
-          >
-            {MOTIONS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <TextAnimationFields
+          value={getThemeTextAnimation(theme)}
+          onChange={(textAnimation) => {
+            const updated = { ...theme, textAnimation };
+            customizeTheme(updated);
+            if (workspaceTab === 'lyrics' && !activeSongId) saveTheme(updated);
+          }}
+        />
         <div>
           <label className="label">Transición entre slides</label>
           <select

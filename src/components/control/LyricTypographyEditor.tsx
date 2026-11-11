@@ -4,10 +4,12 @@ import {
   getLyricPreset, hasLyricStyling, LYRIC_PRESETS, mergeEmphasis, selectionToEmphasis,
 } from '../../lib/lyricTypography';
 import { buildBlockSlides } from '../../lib/slides';
+import { getThemeTextAnimation } from '../../lib/textAnimation';
 import type {
-  LyricAnimationSpeed, LyricEmphasis, LyricTypography, LyricTypographyPreset, SlideBlock, Theme,
+  LyricAnimationSpeed, LyricEmphasis, LyricTypography, LyricTypographyPreset, SlideBlock, TextAnimationConfig, Theme,
 } from '../../types';
 import { SlideStage } from '../SlideStage';
+import { TextAnimationFields } from './TextAnimationFields';
 
 interface Props {
   block: SlideBlock;
@@ -16,17 +18,22 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onChange: (typography: LyricTypography) => void;
+  onAnimationChange: (animation: TextAnimationConfig | undefined) => void;
 }
 
 const PRESETS = Object.entries(LYRIC_PRESETS) as [LyricTypographyPreset, (typeof LYRIC_PRESETS)[LyricTypographyPreset]][];
 
-export function LyricTypographyEditor({ block, theme, selection, open, onOpenChange, onChange }: Props) {
+export function LyricTypographyEditor({
+  block, theme, selection, open, onOpenChange, onChange, onAnimationChange,
+}: Props) {
   const [part, setPart] = useState(0);
   const [replay, setReplay] = useState(0);
   const slides = useMemo(() => open ? buildBlockSlides(block) : [], [block, open]);
   const index = Math.min(part, Math.max(0, slides.length - 1));
   const slide = slides[index]?.slide ?? null;
   const typography = block.typography;
+  const sectionAnimation = block.textAnimation;
+  const customAnimation = sectionAnimation ?? theme.textAnimation;
   const preset = getLyricPreset(typography);
   const emphasis = typography?.emphasis ?? [];
   const lyrics = open || selection ? block.lines.join('\n') : '';
@@ -138,7 +145,7 @@ export function LyricTypographyEditor({ block, theme, selection, open, onOpenCha
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
                   className="btn-soft !px-2 !py-1.5 !text-xs"
-                  disabled={!slide || (hasLyricStyling(slide.typography) && typography?.speed === 'off')}
+                  disabled={!slide || (!customAnimation && hasLyricStyling(slide.typography) && typography?.speed === 'off')}
                   onClick={() => setReplay((current) => current + 1)}
                 >
                   ↻ Reproducir
@@ -191,19 +198,21 @@ export function LyricTypographyEditor({ block, theme, selection, open, onOpenCha
                     value={typography?.accentFamily ?? preset.accentFamily}
                     onChange={(accentFamily) => update({ accentFamily })}
                   />
-                  <label>
-                    <span className="label">Velocidad</span>
-                    <select
-                      className="input !px-2 !py-1.5 !text-xs"
-                      value={typography?.speed ?? 'normal'}
-                      onChange={(e) => update({ speed: e.target.value as LyricAnimationSpeed })}
-                    >
-                      <option value="off">Sin animación</option>
-                      <option value="slow">Suave</option>
-                      <option value="normal">Normal</option>
-                      <option value="fast">Rápida</option>
-                    </select>
-                  </label>
+                  {!customAnimation && (
+                    <label>
+                      <span className="label">Velocidad del estilo</span>
+                      <select
+                        className="input !px-2 !py-1.5 !text-xs"
+                        value={typography?.speed ?? 'normal'}
+                        onChange={(e) => update({ speed: e.target.value as LyricAnimationSpeed })}
+                      >
+                        <option value="off">Sin animación</option>
+                        <option value="slow">Suave</option>
+                        <option value="normal">Normal</option>
+                        <option value="fast">Rápida</option>
+                      </select>
+                    </label>
+                  )}
                   <label>
                     <span className="label">Color de énfasis</span>
                     <input
@@ -232,6 +241,23 @@ export function LyricTypographyEditor({ block, theme, selection, open, onOpenCha
               </div>
             )}
           </div>
+          <fieldset className="space-y-3 border-t border-white/10 pt-2">
+            <legend className="pr-2 text-xs font-semibold text-white/80">Animación de texto</legend>
+            <label className="flex items-center gap-2 text-xs text-white/80">
+              <input
+                type="checkbox"
+                className="accent-accent"
+                checked={Boolean(sectionAnimation)}
+                onChange={(event) => onAnimationChange(
+                  event.target.checked ? getThemeTextAnimation(theme) : undefined,
+                )}
+              />
+              Personalizar animación de esta sección
+            </label>
+            {sectionAnimation && (
+              <TextAnimationFields value={sectionAnimation} onChange={onAnimationChange} />
+            )}
+          </fieldset>
         </div>
       )}
     </div>

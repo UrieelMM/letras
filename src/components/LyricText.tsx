@@ -1,7 +1,8 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { Fragment, useLayoutEffect, useMemo, useRef } from 'react';
 import gsap from 'gsap';
 import { getLyricPreset, splitEmphasizedLines } from '../lib/lyricTypography';
 import type { LyricAnimationSpeed, LyricTypography } from '../types';
+import { renderTextUnits, type TextUnits } from './textAnimationUnits';
 import './lyric-text.css';
 
 const SPEEDS: Record<LyricAnimationSpeed, number> = {
@@ -15,9 +16,10 @@ interface Props {
   lines: string[];
   typography: LyricTypography;
   reduceMotion: boolean;
+  units?: TextUnits;
 }
 
-export function LyricText({ lines, typography, reduceMotion }: Props) {
+export function LyricText({ lines, typography, reduceMotion, units }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const { preset, speed, emphasis, applyToSection } = typography;
   const style = getLyricPreset(typography);
@@ -25,7 +27,7 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
 
   useLayoutEffect(() => {
     const element = root.current;
-    if (!element || reduceMotion || speed === 'off') return;
+    if (!element || units || reduceMotion || speed === 'off') return;
 
     const context = gsap.context(() => {
       const lineNodes = element.querySelectorAll('.lyric-line');
@@ -67,7 +69,7 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
     }, element);
 
     return () => context.revert();
-  }, [applyToSection, content, preset, reduceMotion, speed]);
+  }, [applyToSection, content, preset, reduceMotion, speed, units]);
 
   if (!style) return null;
 
@@ -84,24 +86,30 @@ export function LyricText({ lines, typography, reduceMotion }: Props) {
       } : undefined}
     >
       {content.map((line, index) => (
-        <div className="lyric-line" key={index}>
-          {line.map(({ text, accented }, fragment) => accented ? (
-            <span
-              className="lyric-accent"
-              key={fragment}
-              style={{
-                fontFamily: '"' + accentFamily + '", system-ui, sans-serif',
-                fontWeight: accentFamily === style.accentFamily ? style.accentWeight : 400,
-                fontSize: (typography.accentScale ?? style.accentScale) + 'em',
-                color: typography.accentColor ?? style.accentColor,
-              }}
-            >
-              {text}
-              {preset === 'handwritten' && (
-                <span className="lyric-ink" aria-hidden="true"><i /><i /></span>
-              )}
-            </span>
-          ) : text)}
+        <div className="lyric-line g-line" key={index}>
+          {line.map(({ text, accented }, fragment) => {
+            if (!accented) {
+              return <Fragment key={fragment}>{units ? renderTextUnits(text, units) : text}</Fragment>;
+            }
+            const singleWord = units === 'words' && !/\s/u.test(text);
+            return (
+              <span
+                className={singleWord ? 'lyric-accent g-word' : 'lyric-accent'}
+                key={fragment}
+                style={{
+                  fontFamily: '"' + accentFamily + '", system-ui, sans-serif',
+                  fontWeight: accentFamily === style.accentFamily ? style.accentWeight : 400,
+                  fontSize: (typography.accentScale ?? style.accentScale) + 'em',
+                  color: typography.accentColor ?? style.accentColor,
+                }}
+              >
+                {units && !singleWord ? renderTextUnits(text, units) : text}
+                {preset === 'handwritten' && (
+                  <span className="lyric-ink" aria-hidden="true"><i /><i /></span>
+                )}
+              </span>
+            );
+          })}
         </div>
       ))}
     </div>

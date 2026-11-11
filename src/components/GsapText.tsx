@@ -1,81 +1,79 @@
 import { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
-import type { TextMotionPreset, TextRevealPreset } from '../types';
+import type { LyricTypography, TextAnimationConfig, TextMotionPreset, TextRevealPreset } from '../types';
+import { LyricText } from './LyricText';
+import { renderTextUnits, type TextUnits } from './textAnimationUnits';
 
 interface Props {
   lines: string[];
-  reveal: TextRevealPreset;
-  motion?: TextMotionPreset;
+  animation: TextAnimationConfig;
   rainbow?: boolean;
+  typography?: LyricTypography;
+  reduceMotion: boolean;
 }
 
 type Q = (sel: string) => Element[];
 
-/**
- * Renderiza las líneas del slide y las anima con GSAP.
- * - reveal: animación de ENTRADA (una vez).
- * - motion: animación CONTINUA (se mantiene todo el tiempo).
- * Hace "split" manual en palabras/letras, sin plugins.
- */
-export function GsapText({ lines, reveal, motion = 'none', rainbow }: Props) {
+const SPEED = { slow: 0.7, normal: 1, fast: 1.45 };
+
+const LETTER_REVEALS = new Set<TextRevealPreset>([
+  'charsUp', 'typewriter', 'dance', 'zoomIn', 'dropIn', 'glitch', 'waveText', 'foldLetters',
+]);
+
+const WORD_REVEALS = new Set<TextRevealPreset>([
+  'wordsUp', 'bounce', 'pop', 'fromLeft', 'fromRight', 'flip', 'blurWords', 'swing', 'impact',
+]);
+
+export function GsapText({ lines, animation, rainbow, typography, reduceMotion }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  const { reveal, motion, speed } = animation;
+  const units: TextUnits = LETTER_REVEALS.has(reveal) ? 'letters'
+    : WORD_REVEALS.has(reveal) || motion === 'wordFlow' || motion === 'wordPulse' ? 'words'
+    : 'lines';
+  const lineRainbow = rainbow && units === 'lines';
 
   useLayoutEffect(() => {
     const root = ref.current;
-    if (!root) return;
-
-    const reduced =
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    if (!root || reduceMotion) return;
 
     const ctx = gsap.context(() => {
       const q = gsap.utils.selector(root) as Q;
-
-      // Entrada
-      if (!reduced && reveal !== 'none') {
-        buildReveal(reveal, q, root);
-      } else {
-        gsap.set(q('.g-line, .g-word, .g-char'), { opacity: 1, y: 0, filter: 'none' });
+      const rate = SPEED[speed] ?? 1;
+      const entrance = gsap.timeline().timeScale(rate);
+      if (reveal !== 'none') {
+        buildReveal(entrance, reveal, q, root);
+        const ink = q('.lyric-ink');
+        if (ink.length && (LETTER_REVEALS.has(reveal) || WORD_REVEALS.has(reveal))) {
+          entrance.from(ink, { opacity: 0, duration: 0.22 }, Math.max(0, entrance.duration() - 0.16));
+        }
       }
 
-      // Movimiento continuo (se mantiene siempre)
-      if (!reduced && motion !== 'none') {
-        buildMotion(motion, q, root);
+      const delay = Math.max(0.6, entrance.totalDuration() / rate + 0.12);
+      if (motion !== 'none') {
+        buildMotion(motion, q, root, delay);
+      } else if (reveal === 'dance') {
+        gsap.to(q('.g-char'), {
+          yPercent: -28, duration: 0.5, ease: 'sine.inOut', repeat: -1,
+          yoyo: true, delay, stagger: { each: 0.06, from: 'start' },
+        });
       }
-    }, ref);
+    }, root);
 
     return () => ctx.revert();
-  }, [lines, reveal, motion]);
-
-  const useChars =
-    reveal === 'charsUp' ||
-    reveal === 'typewriter' ||
-    reveal === 'dance' ||
-    reveal === 'zoomIn' ||
-    reveal === 'dropIn' ||
-    reveal === 'glitch' ||
-    reveal === 'waveText';
-  const useWords =
-    !useChars &&
-    (reveal === 'wordsUp' ||
-      reveal === 'bounce' ||
-      reveal === 'pop' ||
-      reveal === 'fromLeft' ||
-      reveal === 'fromRight' ||
-      reveal === 'flip' ||
-      reveal === 'blurWords' ||
-      reveal === 'swing');
-  const lineRainbow = rainbow && !useChars && !useWords;
+  }, [lines, reveal, motion, speed, typography, reduceMotion]);
 
   return (
     <div ref={ref}>
       <div className="g-motion">
-        {lines.map((line, li) => (
+        {typography ? (
+          <LyricText lines={lines} typography={typography} reduceMotion={reduceMotion} units={units} />
+        ) : lines.map((line, index) => (
           <div
-            key={li}
+            key={index}
             className={`g-line ${lineRainbow ? 'g-rainbow' : ''}`}
-            style={lineRainbow ? { animationDelay: `${li * 0.2}s` } : undefined}
+            style={lineRainbow ? { animationDelay: `${index * 0.2}s` } : undefined}
           >
-            {useChars ? splitChars(line, rainbow) : useWords ? splitWords(line, rainbow) : line || ' '}
+            {renderTextUnits(line || ' ', units, rainbow)}
           </div>
         ))}
       </div>
@@ -83,20 +81,20 @@ export function GsapText({ lines, reveal, motion = 'none', rainbow }: Props) {
   );
 }
 
-function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
+function buildReveal(timeline: gsap.core.Timeline, reveal: TextRevealPreset, q: Q, root: HTMLElement) {
   const ease = 'power3.out';
   switch (reveal) {
     case 'fade':
-      gsap.from(root, { opacity: 0, scale: 0.96, duration: 0.7, ease: 'power2.out' });
+      timeline.from(root, { opacity: 0, scale: 0.96, duration: 0.7, ease: 'power2.out' });
       break;
     case 'linesUp':
-      gsap.from(q('.g-line'), { yPercent: 110, opacity: 0, duration: 0.7, ease, stagger: 0.12 });
+      timeline.from(q('.g-line'), { yPercent: 110, opacity: 0, duration: 0.7, ease, stagger: 0.12 });
       break;
     case 'wordsUp':
-      gsap.from(q('.g-word'), { yPercent: 120, opacity: 0, duration: 0.6, ease, stagger: 0.05 });
+      timeline.from(q('.g-word'), { yPercent: 120, opacity: 0, duration: 0.6, ease, stagger: 0.05 });
       break;
     case 'charsUp':
-      gsap.from(q('.g-char'), {
+      timeline.from(q('.g-char'), {
         yPercent: 100,
         opacity: 0,
         filter: 'blur(8px)',
@@ -106,10 +104,10 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'typewriter':
-      gsap.from(q('.g-char'), { opacity: 0, duration: 0.01, ease: 'none', stagger: 0.035 });
+      timeline.from(q('.g-char'), { opacity: 0, duration: 0.01, ease: 'none', stagger: 0.035 });
       break;
     case 'bounce':
-      gsap.from(q('.g-word'), {
+      timeline.from(q('.g-word'), {
         y: '-120%',
         opacity: 0,
         duration: 0.9,
@@ -118,7 +116,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'pop':
-      gsap.from(q('.g-word'), {
+      timeline.from(q('.g-word'), {
         scale: 0,
         opacity: 0,
         transformOrigin: 'center',
@@ -128,30 +126,22 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'dance':
-      gsap.from(q('.g-char'), {
+      timeline.from(q('.g-char'), {
         scale: 0,
         opacity: 0,
         duration: 0.5,
         ease: 'back.out(2)',
         stagger: 0.03,
       });
-      gsap.to(q('.g-char'), {
-        yPercent: -28,
-        duration: 0.5,
-        ease: 'sine.inOut',
-        repeat: -1,
-        yoyo: true,
-        stagger: { each: 0.06, from: 'start' },
-      });
       break;
     case 'fromLeft':
-      gsap.from(q('.g-word'), { xPercent: -140, opacity: 0, duration: 0.6, ease, stagger: 0.05 });
+      timeline.from(q('.g-word'), { xPercent: -140, opacity: 0, duration: 0.6, ease, stagger: 0.05 });
       break;
     case 'fromRight':
-      gsap.from(q('.g-word'), { xPercent: 140, opacity: 0, duration: 0.6, ease, stagger: 0.05 });
+      timeline.from(q('.g-word'), { xPercent: 140, opacity: 0, duration: 0.6, ease, stagger: 0.05 });
       break;
     case 'zoomIn':
-      gsap.from(q('.g-char'), {
+      timeline.from(q('.g-char'), {
         scale: 2.6,
         opacity: 0,
         transformOrigin: 'center',
@@ -161,7 +151,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'flip':
-      gsap.from(q('.g-word'), {
+      timeline.from(q('.g-word'), {
         rotationX: 90,
         transformPerspective: 500,
         transformOrigin: 'center',
@@ -172,7 +162,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'blurWords':
-      gsap.from(q('.g-word'), {
+      timeline.from(q('.g-word'), {
         opacity: 0,
         filter: 'blur(12px)',
         duration: 0.7,
@@ -181,7 +171,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'dropIn':
-      gsap.from(q('.g-char'), {
+      timeline.from(q('.g-char'), {
         y: '-120%',
         opacity: 0,
         duration: 0.5,
@@ -190,7 +180,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'swing':
-      gsap.from(q('.g-word'), {
+      timeline.from(q('.g-word'), {
         rotation: -65,
         opacity: 0,
         transformOrigin: 'top center',
@@ -200,7 +190,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'glitch':
-      gsap.from(q('.g-char'), {
+      timeline.from(q('.g-char'), {
         x: () => gsap.utils.random(-24, 24),
         y: () => gsap.utils.random(-12, 12),
         opacity: 0,
@@ -210,7 +200,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'waveText':
-      gsap.from(q('.g-char'), {
+      timeline.from(q('.g-char'), {
         yPercent: 130,
         opacity: 0,
         duration: 0.6,
@@ -219,7 +209,7 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
       });
       break;
     case 'expand':
-      gsap.from(root, {
+      timeline.from(root, {
         scaleX: 0.35,
         opacity: 0,
         transformOrigin: 'center',
@@ -227,13 +217,41 @@ function buildReveal(reveal: TextRevealPreset, q: Q, root: HTMLElement) {
         ease: 'power3.out',
       });
       break;
+    case 'curtain':
+      timeline.fromTo(q('.g-line'),
+        { clipPath: 'inset(110% -15% -20% -15%)', yPercent: 12 },
+        {
+          clipPath: 'inset(-20% -15% -20% -15%)', yPercent: 0, duration: 0.56,
+          clearProps: 'clipPath', ease, stagger: { amount: 0.26 },
+        },
+      );
+      break;
+    case 'impact':
+      timeline.from(q('.g-word'), {
+        scaleX: 1.42, scaleY: 0.42, yPercent: 28, opacity: 0,
+        transformOrigin: 'center bottom', duration: 0.56, ease: 'back.out(1.8)',
+        stagger: { amount: 0.35 },
+      });
+      break;
+    case 'counterSlide':
+      timeline.from(q('.g-line'), {
+        xPercent: (index: number) => index % 2 === 0 ? -28 : 28,
+        opacity: 0, duration: 0.53, ease, stagger: { amount: 0.24 },
+      });
+      break;
+    case 'foldLetters':
+      timeline.from(q('.g-char'), {
+        rotationY: (index: number) => index % 2 === 0 ? -88 : 88,
+        yPercent: 22, opacity: 0, transformPerspective: 450, transformOrigin: 'center bottom',
+        duration: 0.58, ease, stagger: { amount: 0.38, from: 'center' },
+      });
+      break;
   }
 }
 
 /** Animación continua que se mantiene mientras el slide está visible. */
-function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement) {
+function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: number) {
   const target = (q('.g-motion')[0] as HTMLElement) ?? root;
-  const delay = 0.6; // deja que termine la entrada
   const common = { repeat: -1, yoyo: true, ease: 'sine.inOut', delay } as const;
 
   switch (motion) {
@@ -260,26 +278,26 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement) {
         repeat: -1,
         yoyo: true,
         ease: 'sine.inOut',
-        delay: 1.2,
+        delay,
         stagger: { each: 0.18, from: 'start' },
       });
       break;
     }
     case 'drift':
-      gsap.fromTo(target, { x: -10 }, { x: 10, duration: 3.5, ...common });
+      gsap.fromTo(target, { x: -10 }, { x: 10, duration: 3.5, immediateRender: false, ...common });
       break;
     case 'tilt':
       gsap.fromTo(
         target,
         { rotationX: -6, transformPerspective: 600, transformOrigin: 'center' },
-        { rotationX: 6, duration: 3, ...common },
+        { rotationX: 6, duration: 3, immediateRender: false, ...common },
       );
       break;
     case 'wobble':
       gsap.fromTo(
         target,
         { rotation: -2.5, transformOrigin: 'center' },
-        { rotation: 2.5, duration: 2.2, ...common },
+        { rotation: 2.5, duration: 2.2, immediateRender: false, ...common },
       );
       break;
     case 'heartbeat':
@@ -298,12 +316,12 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement) {
       gsap.fromTo(
         target,
         { scaleX: 1.05, scaleY: 0.95, transformOrigin: 'center' },
-        { scaleX: 0.95, scaleY: 1.05, duration: 1.6, ...common },
+        { scaleX: 0.95, scaleY: 1.05, duration: 1.6, immediateRender: false, ...common },
       );
       break;
     case 'orbit':
-      gsap.fromTo(target, { x: -8 }, { x: 8, duration: 3, ...common });
-      gsap.fromTo(target, { y: -8 }, { y: 8, duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: delay + 0.75 });
+      gsap.fromTo(target, { x: -8 }, { x: 8, duration: 3, immediateRender: false, ...common });
+      gsap.fromTo(target, { y: -8 }, { y: 8, duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: delay + 0.75, immediateRender: false });
       break;
     case 'shimmer':
       gsap.to(target, { opacity: 0.65, duration: 1.0, ...common });
@@ -312,7 +330,7 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement) {
       gsap.fromTo(
         target,
         { scale: 0.95, transformOrigin: 'center' },
-        { scale: 1.06, duration: 4, ...common },
+        { scale: 1.06, duration: 4, immediateRender: false, ...common },
       );
       break;
     case 'rippleText': {
@@ -323,7 +341,7 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement) {
         repeat: -1,
         yoyo: true,
         ease: 'sine.inOut',
-        delay: 1.1,
+        delay,
         stagger: { each: 0.06, from: 'start' },
       });
       break;
@@ -335,16 +353,29 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement) {
         { yPercent: 5 },
         {
           yPercent: -5,
+          immediateRender: false,
           duration: 1.4,
           repeat: -1,
           yoyo: true,
           ease: 'sine.inOut',
-          delay: 1.1,
+          delay,
           stagger: { each: 0.05, from: 'center' },
         },
       );
       break;
     }
+    case 'wordFlow':
+      gsap.to(q('.g-word'), {
+        yPercent: -12, rotation: -1.8, duration: 0.7, repeatDelay: 0.42,
+        ...common, stagger: { amount: 0.64 },
+      });
+      break;
+    case 'wordPulse':
+      gsap.to(q('.g-word'), {
+        scale: 1.075, duration: 0.46, repeatDelay: 0.36,
+        ...common, stagger: { amount: 0.58, from: 'center' },
+      });
+      break;
   }
 }
 
@@ -355,49 +386,4 @@ function pickUnits(q: Q): Element[] {
   const words = q('.g-word');
   if (words.length) return words;
   return q('.g-line');
-}
-
-function splitWords(line: string, rainbow?: boolean) {
-  const words = line.split(' ').filter((w) => w.length > 0);
-  // Palabras como inline-block (para transformaciones GSAP) separadas por un
-  // espacio real, de modo que la alineación justificada pueda repartirlo.
-  return words.flatMap((w, i) => {
-    const span = (
-      <span
-        key={`w${i}`}
-        className={`g-word ${rainbow ? 'g-rainbow' : ''}`}
-        style={{ display: 'inline-block', animationDelay: rainbow ? `${i * 0.12}s` : undefined }}
-      >
-        {w}
-      </span>
-    );
-    return i < words.length - 1 ? [span, ' '] : [span];
-  });
-}
-
-function splitChars(line: string, rainbow?: boolean) {
-  const words = line.split(' ').filter(Boolean);
-  let charOffset = 0;
-
-  return words.flatMap((word, wordIndex) => {
-    const offset = charOffset;
-    charOffset += word.length;
-    const unit = (
-      <span key={`word-${wordIndex}`} className="inline-block whitespace-nowrap">
-        {Array.from(word).map((ch, charIndex) => (
-          <span
-            key={charIndex}
-            className={`g-char ${rainbow ? 'g-rainbow' : ''}`}
-            style={{
-              display: 'inline-block',
-              animationDelay: rainbow ? `${(offset + charIndex) * 0.06}s` : undefined,
-            }}
-          >
-            {ch}
-          </span>
-        ))}
-      </span>
-    );
-    return wordIndex < words.length - 1 ? [unit, ' '] : [unit];
-  });
 }

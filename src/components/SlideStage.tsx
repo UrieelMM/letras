@@ -7,6 +7,7 @@ import { LyricText } from './LyricText';
 import { OverlayEffect } from './OverlayEffect';
 import { loadFont } from '../lib/fonts';
 import { hasLyricStyling } from '../lib/lyricTypography';
+import { getThemeTextAnimation } from '../lib/textAnimation';
 import appLogo from '../assets/3.png';
 import { useLocalMediaUrl } from '../media/useLocalMediaUrl';
 
@@ -109,8 +110,11 @@ export function SlideStage({ live, replay = 0 }: Props) {
   const resolvedLogoUrl = useLocalMediaUrl(logoUrl);
   const typography = slide?.typography;
   const hasLyricStyle = hasLyricStyling(typography);
+  const customAnimation = slide?.textAnimation ?? theme.textAnimation;
+  const useStyleAnimation = hasLyricStyle && !customAnimation;
+  const animation = customAnimation ?? getThemeTextAnimation(theme);
   const reduceMotion = useReducedMotion();
-  const t = hasLyricStyle ? 'fade' : theme.transition;
+  const t = useStyleAnimation || reduceMotion ? 'fade' : theme.transition;
   const referenceStyle = theme.reference ?? { show: true, position: 'bottom' as const, sizeVw: 1.25 };
   const showReference = Boolean(slide?.reference && referenceStyle.show);
   const textPadding = showReference
@@ -141,13 +145,13 @@ export function SlideStage({ live, replay = 0 }: Props) {
     if (!c || !node) return;
     const cw = c.clientWidth;
     const ch = c.clientHeight;
-    // Las transformaciones no afectan scrollWidth/Height: la medida es estable.
-    const tw = hasLyricStyle ? node.clientWidth : node.scrollWidth;
-    const th = hasLyricStyle ? node.clientHeight : node.scrollHeight;
-    if (!cw || !ch || !tw || !th) return;
-    const fit = Math.min(cw / tw, ch / th, 1);
+    // Las palabras largas se ajustan al ancho. Mide la altura de diseño,
+    // ya que scrollHeight puede incluir letras desplazadas por la animación.
+    const th = node.clientHeight;
+    if (!cw || !ch || !th) return;
+    const fit = Math.min(ch / th, 1);
     setFitScale(fit > 0 && isFinite(fit) ? fit : 1);
-  }, [autoFit, hasLyricStyle]);
+  }, [autoFit]);
 
   // Callback ref: mide cuando el nodo del slide se monta (evita el desfase de
   // AnimatePresence) y vuelve a medir en resize o al cargar la fuente.
@@ -261,7 +265,8 @@ export function SlideStage({ live, replay = 0 }: Props) {
                   animate="animate"
                   exit="exit"
                   transition={{
-                    duration: hasLyricStyle ? (reduceMotion || typography?.speed === 'off' ? 0 : 0.16) : 0.5,
+                    duration: reduceMotion || (useStyleAnimation && typography?.speed === 'off')
+                      ? 0 : useStyleAnimation ? 0.16 : 0.5,
                     ease: 'easeOut',
                   }}
                 >
@@ -279,14 +284,14 @@ export function SlideStage({ live, replay = 0 }: Props) {
                       textAlignLast: theme.alignment === 'justify' ? 'justify' : 'auto',
                       width: '100%',
                       whiteSpace: 'normal',
-                      overflowWrap: 'normal',
+                      overflowWrap: 'anywhere',
                       wordBreak: 'normal',
                       transform: `scale(${fitScale})`,
                       transformOrigin: originFor(theme.alignment, theme.vAlign),
                     }}
                     className={theme.color.shadow ? 'text-shadow-strong' : ''}
                   >
-                    {hasLyricStyle && typography ? (
+                    {useStyleAnimation && typography ? (
                       <LyricText
                         key={replay}
                         lines={slide.lines}
@@ -295,10 +300,11 @@ export function SlideStage({ live, replay = 0 }: Props) {
                       />
                     ) : (
                       <GsapText
-                        key={`${slide.id}-${theme.textReveal}-${theme.textMotion ?? 'none'}-${theme.rainbowText ? 1 : 0}-${replay}`}
+                        key={replay}
                         lines={slide.lines}
-                        reveal={theme.textReveal ?? 'wordsUp'}
-                        motion={theme.textMotion ?? 'none'}
+                        animation={animation}
+                        typography={hasLyricStyle ? typography : undefined}
+                        reduceMotion={Boolean(reduceMotion)}
                         rainbow={theme.rainbowText}
                       />
                     )}
