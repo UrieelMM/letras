@@ -13,7 +13,7 @@ const DYNAMIC_REVEALS = [
 
 const DYNAMIC_MOTIONS = [
   { value: 'doubleBeat', label: 'Doble acento', description: 'Dos pulsos breves seguidos de una pausa para leer.' },
-  { value: 'pendulumArc', label: 'Péndulo 3D', description: 'El texto recorre un arco corto en perspectiva y vuelve al centro.' },
+  { value: 'pendulumArc', label: 'Péndulo 3D', description: 'El texto se balancea de lado a lado en un arco corto con perspectiva.' },
   { value: 'rollingWave', label: 'Cascada por palabras', description: 'Cada palabra sube y se asienta mientras la siguiente toma el relevo.' },
   { value: 'letterTilt', label: 'Ola de letras 3D', description: 'Las letras se inclinan en secuencia y descansan en su posición original.' },
   { value: 'wordFlow', label: 'Ola por palabras', description: 'Las palabras suben y vuelven a su sitio en secuencia.' },

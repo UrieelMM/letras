@@ -289,21 +289,14 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: n
       break;
     }
     case 'drift':
-      gsap.fromTo(target, { x: -10 }, { x: 10, duration: 3.5, immediateRender: false, ...common });
+      swingBetween(target, { x: -10 }, { x: 10 }, 3.5, delay);
       break;
     case 'tilt':
-      gsap.fromTo(
-        target,
-        { rotationX: -6, transformPerspective: 600, transformOrigin: 'center' },
-        { rotationX: 6, duration: 3, immediateRender: false, ...common },
-      );
+      gsap.set(target, { transformPerspective: 600, transformOrigin: 'center' });
+      swingBetween(target, { rotationX: -6 }, { rotationX: 6 }, 3, delay);
       break;
     case 'wobble':
-      gsap.fromTo(
-        target,
-        { rotation: -2.5, transformOrigin: 'center' },
-        { rotation: 2.5, duration: 2.2, immediateRender: false, ...common },
-      );
+      swingBetween(target, { rotation: -2.5, transformOrigin: 'center' }, { rotation: 2.5 }, 2.2, delay);
       break;
     case 'heartbeat':
       gsap.to(target, {
@@ -318,25 +311,23 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: n
       });
       break;
     case 'jelly':
-      gsap.fromTo(
+      swingBetween(
         target,
         { scaleX: 1.05, scaleY: 0.95, transformOrigin: 'center' },
-        { scaleX: 0.95, scaleY: 1.05, duration: 1.6, immediateRender: false, ...common },
+        { scaleX: 0.95, scaleY: 1.05 },
+        1.6,
+        delay,
       );
       break;
     case 'orbit':
-      gsap.fromTo(target, { x: -8 }, { x: 8, duration: 3, immediateRender: false, ...common });
-      gsap.fromTo(target, { y: -8 }, { y: 8, duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut', delay: delay + 0.75, immediateRender: false });
+      swingBetween(target, { x: -8 }, { x: 8 }, 3, delay);
+      swingBetween(target, { y: -8 }, { y: 8 }, 3, delay + 0.75);
       break;
     case 'shimmer':
       gsap.to(target, { opacity: 0.65, duration: 1.0, ...common });
       break;
     case 'zoomSlow':
-      gsap.fromTo(
-        target,
-        { scale: 0.95, transformOrigin: 'center' },
-        { scale: 1.06, duration: 4, immediateRender: false, ...common },
-      );
+      swingBetween(target, { scale: 0.95, transformOrigin: 'center' }, { scale: 1.06 }, 4, delay);
       break;
     case 'rippleText': {
       const units = pickUnits(q);
@@ -353,20 +344,8 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: n
     }
     case 'bobUnits': {
       const units = pickUnits(q);
-      gsap.fromTo(
-        units,
-        { yPercent: 5 },
-        {
-          yPercent: -5,
-          immediateRender: false,
-          duration: 1.4,
-          repeat: -1,
-          yoyo: true,
-          ease: 'sine.inOut',
-          delay,
-          stagger: { each: 0.05, from: 'center' },
-        },
-      );
+      const stagger = { each: 0.05, from: 'center' } as const;
+      swingBetween(units, { yPercent: 5, stagger }, { yPercent: -5, stagger }, 1.4, delay);
       break;
     }
     case 'wordFlow':
@@ -376,37 +355,52 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: n
       });
       break;
     case 'doubleBeat':
-      gsap.timeline({ delay, repeat: -1, repeatDelay: 2.1 })
-        .to(target, { scale: 1.1, duration: 0.17, ease: 'power2.out' })
-        .to(target, { scale: 1, duration: 0.22, ease: 'sine.inOut' })
-        .to(target, { scale: 1.065, duration: 0.16, ease: 'power2.out' })
-        .to(target, { scale: 1, duration: 0.34, ease: 'power2.out' });
+      gsap.timeline({ delay, repeat: -1, repeatDelay: 2.1, defaults: { ease: 'sine.inOut' } })
+        .to(target, { scale: 1.1, duration: 0.17 })
+        .to(target, { scale: 1, duration: 0.22 })
+        .to(target, { scale: 1.065, duration: 0.16 })
+        .to(target, { scale: 1, duration: 0.34 });
       break;
     case 'pendulumArc':
-      gsap.timeline({ delay, repeat: -1, repeatDelay: 0.9, defaults: { ease: 'sine.inOut' } })
-        .to(target, { x: '0.22em', y: '-0.13em', rotationY: 9, rotation: 1.8, transformPerspective: 650, duration: 0.67 })
-        .to(target, { x: '-0.22em', y: '-0.07em', rotationY: -9, rotation: -1.8, duration: 1.18 })
-        .to(target, { x: 0, y: 0, rotationY: 0, rotation: 0, duration: 0.62 });
+      gsap.timeline({ delay })
+        .set(target, { transformPerspective: 650 })
+        .to(target, {
+          x: '0.22em', y: '-0.13em', rotationY: 9, rotation: 1.8,
+          duration: 0.66, ease: 'sine.inOut',
+        })
+        .to(target, {
+          keyframes: {
+            x: ['0.22em', '-0.22em'],
+            y: ['-0.13em', '0em', '-0.13em'],
+            rotationY: [9, -9],
+            rotation: [1.8, -1.8],
+            easeEach: 'sine.inOut',
+          },
+          duration: 1.32, ease: 'none', repeat: -1, yoyo: true,
+        });
       break;
     case 'rollingWave':
       gsap.to(q('.g-word'), {
         keyframes: [
-          { yPercent: -21, rotation: -4, duration: 0.23, ease: 'power2.out' },
+          { yPercent: -21, rotation: -4, duration: 0.23, ease: 'sine.inOut' },
           { yPercent: 0, rotation: 0, duration: 0.38, ease: 'power2.inOut' },
         ],
         stagger: { amount: 0.65 }, delay, repeat: -1, repeatDelay: 1.35,
       });
       break;
-    case 'letterTilt':
-      gsap.to(q('.g-char'), {
-        transformPerspective: 500,
-        keyframes: [
-          { rotationX: 22, yPercent: -12, duration: 0.26, ease: 'power2.out' },
-          { rotationX: 0, yPercent: 0, duration: 0.38, ease: 'sine.inOut' },
-        ],
-        stagger: { amount: 0.58, from: 'center' }, delay, repeat: -1, repeatDelay: 1.45,
-      });
+    case 'letterTilt': {
+      const letters = q('.g-char');
+      gsap.timeline({ delay })
+        .set(letters, { transformPerspective: 500 })
+        .to(letters, {
+          keyframes: [
+            { rotationX: 22, yPercent: -12, duration: 0.26, ease: 'sine.inOut' },
+            { rotationX: 0, yPercent: 0, duration: 0.38, ease: 'sine.inOut' },
+          ],
+          stagger: { amount: 0.58, from: 'center' }, repeat: -1, repeatDelay: 1.45,
+        });
       break;
+    }
     case 'wordPulse':
       gsap.to(q('.g-word'), {
         scale: 1.075, duration: 0.46, repeatDelay: 0.36,
@@ -414,6 +408,18 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: n
       });
       break;
   }
+}
+
+function swingBetween(
+  targets: gsap.TweenTarget,
+  first: gsap.TweenVars,
+  second: gsap.TweenVars,
+  duration: number,
+  delay: number,
+) {
+  gsap.timeline({ delay, defaults: { ease: 'sine.inOut' } })
+    .to(targets, { ...first, duration: duration / 2 })
+    .to(targets, { ...second, duration, repeat: -1, yoyo: true });
 }
 
 /** Elige la unidad más pequeña disponible para animar (letras, palabras o líneas). */
