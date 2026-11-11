@@ -36,6 +36,10 @@ export const FONT_OPTIONS: FontOption[] = [
   { family: 'Pacifico', label: 'Pacifico', google: 'Pacifico', category: 'script' },
   { family: 'Dancing Script', label: 'Dancing Script', google: 'Dancing+Script:wght@400;500;600;700', category: 'script' },
   { family: 'Caveat', label: 'Caveat', google: 'Caveat:wght@400;500;600;700', category: 'script' },
+  { family: 'Amatic SC', label: 'Amatic SC', google: 'Amatic+SC:wght@700', category: 'display' },
+  { family: 'Bangers', label: 'Bangers', google: 'Bangers', category: 'display' },
+  { family: 'Barlow Condensed', label: 'Barlow Condensed', google: 'Barlow+Condensed:wght@500;700;800', category: 'display' },
+  { family: 'Kalam', label: 'Kalam', google: 'Kalam:wght@400;700', category: 'script' },
 ];
 
 const loaded = new Set<string>();

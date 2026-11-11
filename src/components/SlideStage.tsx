@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, type Variants } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion, type Variants } from 'framer-motion';
 import type { LiveState, TransitionPreset } from '../types';
 import { Background } from './Background';
 import { GsapText } from './GsapText';
+import { LyricText } from './LyricText';
 import { OverlayEffect } from './OverlayEffect';
 import { loadFont } from '../lib/fonts';
+import { getLyricPreset } from '../lib/lyricTypography';
 import appLogo from '../assets/3.png';
 import { useLocalMediaUrl } from '../media/useLocalMediaUrl';
 
 interface Props {
   live: LiveState;
-  /** escala el tamaño de fuente (1 = pantalla completa; <1 para previews) */
-  scale?: number;
+  replay?: number;
 }
 
 const VARIANTS: Record<TransitionPreset, Variants> = {
@@ -103,17 +104,20 @@ function originFor(align: string, vAlign: string): string {
   return `${x} ${y}`;
 }
 
-export function SlideStage({ live, scale = 1 }: Props) {
+export function SlideStage({ live, replay = 0 }: Props) {
   const { theme, slide, blackout, showLogo, logoUrl, clearText } = live;
   const resolvedLogoUrl = useLocalMediaUrl(logoUrl);
-  const t = theme.transition;
+  const typography = slide?.typography;
+  const hasLyricStyle = Boolean(getLyricPreset(typography));
+  const reduceMotion = useReducedMotion();
+  const t = hasLyricStyle ? 'fade' : theme.transition;
   const referenceStyle = theme.reference ?? { show: true, position: 'bottom' as const, sizeVw: 1.25 };
   const showReference = Boolean(slide?.reference && referenceStyle.show);
   const textPadding = showReference
     ? referenceStyle.position === 'top'
-      ? `${11 * scale}% ${6 * scale}% ${6 * scale}%`
-      : `${6 * scale}% ${6 * scale}% ${11 * scale}%`
-    : `${6 * scale}%`;
+      ? '11% 6% 6%'
+      : '6% 6% 11%'
+    : '6%';
 
   // Activa la tipografía local del tema en esta ventana.
   useEffect(() => {
@@ -138,12 +142,12 @@ export function SlideStage({ live, scale = 1 }: Props) {
     const cw = c.clientWidth;
     const ch = c.clientHeight;
     // Las transformaciones no afectan scrollWidth/Height: la medida es estable.
-    const tw = node.scrollWidth;
-    const th = node.scrollHeight;
+    const tw = hasLyricStyle ? node.clientWidth : node.scrollWidth;
+    const th = hasLyricStyle ? node.clientHeight : node.scrollHeight;
     if (!cw || !ch || !tw || !th) return;
     const fit = Math.min(cw / tw, ch / th, 1);
     setFitScale(fit > 0 && isFinite(fit) ? fit : 1);
-  }, [autoFit]);
+  }, [autoFit, hasLyricStyle]);
 
   // Callback ref: mide cuando el nodo del slide se monta (evita el desfase de
   // AnimatePresence) y vuelve a medir en resize o al cargar la fuente.
@@ -180,7 +184,7 @@ export function SlideStage({ live, scale = 1 }: Props) {
         : 'center';
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black">
+    <div className="relative h-full w-full overflow-hidden bg-black" style={{ containerType: 'size' }}>
       {/* Fondo */}
       {!blackout && <Background bg={theme.background} />}
 
@@ -221,14 +225,14 @@ export function SlideStage({ live, scale = 1 }: Props) {
                 alt={logoUrl ? 'Logo de la organización' : 'Wordship Screen'}
                 className="object-contain drop-shadow-2xl"
                 style={{
-                  maxWidth: `${(logoUrl ? 48 : 16) * scale}vw`,
-                  maxHeight: `${(logoUrl ? 48 : 32) * scale}vh`,
+                  maxWidth: logoUrl ? '48cqw' : '16cqw',
+                  maxHeight: logoUrl ? '48cqh' : '32cqh',
                 }}
               />
               {!logoUrl && (
                 <span
                   className="flex flex-col font-extrabold leading-[0.88] tracking-[-0.05em] text-white text-shadow-strong"
-                  style={{ fontSize: `${4 * scale}vw` }}
+                  style={{ fontSize: '4cqw' }}
                 >
                   <span>Wordship</span>
                   <span>Screen</span>
@@ -256,14 +260,17 @@ export function SlideStage({ live, scale = 1 }: Props) {
                   initial="initial"
                   animate="animate"
                   exit="exit"
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  transition={{
+                    duration: hasLyricStyle ? (reduceMotion || typography?.speed === 'off' ? 0 : 0.16) : 0.5,
+                    ease: 'easeOut',
+                  }}
                 >
                   <div
                     ref={setTextNode}
                     style={{
                       fontFamily: `'${theme.font.family}', system-ui, sans-serif`,
                       fontWeight: theme.font.weight,
-                      fontSize: `${theme.font.sizeVw * scale}vw`,
+                      fontSize: `${theme.font.sizeVw}cqw`,
                       lineHeight: theme.font.lineHeight,
                       letterSpacing: `${theme.font.letterSpacing}px`,
                       color: theme.color.text,
@@ -279,13 +286,22 @@ export function SlideStage({ live, scale = 1 }: Props) {
                     }}
                     className={theme.color.shadow ? 'text-shadow-strong' : ''}
                   >
-                    <GsapText
-                      key={`${slide.id}-${theme.textReveal}-${theme.textMotion ?? 'none'}-${theme.rainbowText ? 1 : 0}`}
-                      lines={slide.lines}
-                      reveal={theme.textReveal ?? 'wordsUp'}
-                      motion={theme.textMotion ?? 'none'}
-                      rainbow={theme.rainbowText}
-                    />
+                    {hasLyricStyle && typography ? (
+                      <LyricText
+                        key={replay}
+                        lines={slide.lines}
+                        typography={typography}
+                        reduceMotion={Boolean(reduceMotion)}
+                      />
+                    ) : (
+                      <GsapText
+                        key={`${slide.id}-${theme.textReveal}-${theme.textMotion ?? 'none'}-${theme.rainbowText ? 1 : 0}-${replay}`}
+                        lines={slide.lines}
+                        reveal={theme.textReveal ?? 'wordsUp'}
+                        motion={theme.textMotion ?? 'none'}
+                        rainbow={theme.rainbowText}
+                      />
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -305,8 +321,8 @@ export function SlideStage({ live, scale = 1 }: Props) {
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="absolute z-10 max-w-[72%] text-right"
             style={{
-              right: `${6 * scale}%`,
-              [referenceStyle.position]: `${4 * scale}%`,
+              right: '6%',
+              [referenceStyle.position]: '4%',
               fontFamily: `'${theme.font.family}', system-ui, sans-serif`,
               color: theme.color.text,
               textShadow: theme.color.shadow ? '0 2px 16px rgba(0,0,0,.6)' : undefined,
@@ -314,12 +330,12 @@ export function SlideStage({ live, scale = 1 }: Props) {
           >
             <div
               className="font-semibold tracking-wide"
-              style={{ fontSize: `${referenceStyle.sizeVw * scale}vw` }}
+              style={{ fontSize: `${referenceStyle.sizeVw}cqw` }}
             >
               {slide.reference}
             </div>
             {slide.attribution && (
-              <div className="mt-1 opacity-65" style={{ fontSize: `${0.64 * scale}vw` }}>
+              <div className="mt-1 opacity-65" style={{ fontSize: '0.64cqw' }}>
                 {slide.attribution}
               </div>
             )}

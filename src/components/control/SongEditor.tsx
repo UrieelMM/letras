@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { toast } from '../../store/toastStore';
 import { uid } from '../../lib/id';
+import { getLyricPreset, rebaseEmphasis } from '../../lib/lyricTypography';
 import { BLOCK_LABELS } from '../../lib/slides';
-import type { SlideBlock, SlideBlockType, Song } from '../../types';
+import type { LyricEmphasis, SlideBlock, SlideBlockType, Song } from '../../types';
+import { LyricTypographyEditor } from './LyricTypographyEditor';
 
 interface Props {
   songId: string;
@@ -18,10 +20,15 @@ export function SongEditor({ songId, onClose }: Props) {
   const original = songs.find((s) => s.id === songId);
   const [draft, setDraft] = useState<Song | null>(original ?? null);
   const [tagsText, setTagsText] = useState(original?.tags.join(', ') ?? '');
+  const [typographyBlockId, setTypographyBlockId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<(LyricEmphasis & { blockId: string }) | null>(null);
+  const theme = useStore((s) => s.themeForSong(draft));
 
   useEffect(() => {
     setDraft(original ? { ...original } : null);
     setTagsText(original?.tags.join(', ') ?? '');
+    setTypographyBlockId(null);
+    setSelection(null);
   }, [songId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Si la canción llega después (carga async / Firestore), rellena el borrador.
@@ -41,6 +48,16 @@ export function SongEditor({ songId, onClose }: Props) {
     setDraft((d) =>
       d ? { ...d, blocks: d.blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)) } : d,
     );
+  }
+  function updateLyrics(block: SlideBlock, value: string, caret: number) {
+    const typography = block.typography;
+    const lines = value.split('\n');
+    if (!typography?.emphasis?.length) {
+      setBlock(block.id, { lines });
+      return;
+    }
+    const emphasis = rebaseEmphasis(typography.emphasis, block.lines.join('\n'), value, caret);
+    setBlock(block.id, { lines, typography: { ...typography, emphasis } });
   }
   function addBlock() {
     setDraft((d) =>
@@ -87,7 +104,7 @@ export function SongEditor({ songId, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="glass flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl shadow-2xl">
+      <div className="glass flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <h2 className="text-base font-semibold text-white">Editar canción</h2>
           <button className="btn-ghost" onClick={onClose}>
@@ -176,11 +193,35 @@ export function SongEditor({ songId, onClose }: Props) {
                   </div>
                 </div>
                 <textarea
+                  aria-label={'Letra de ' + (block.label || BLOCK_LABELS[block.type])}
                   className="input min-h-[120px] resize-y font-mono text-xs leading-relaxed"
                   placeholder={'Una línea por renglón.\nDeja una línea en blanco para separar diapositivas.'}
                   value={block.lines.join('\n')}
-                  onChange={(e) => setBlock(block.id, { lines: e.target.value.split('\n') })}
+                  onChange={(e) => {
+                    setSelection(null);
+                    updateLyrics(block, e.currentTarget.value, e.currentTarget.selectionStart);
+                  }}
+                  onSelect={(e) => {
+                    const { selectionStart, selectionEnd } = e.currentTarget;
+                    setSelection({ blockId: block.id, start: selectionStart, end: selectionEnd });
+                  }}
                 />
+                <button
+                  className="btn-soft mt-2 !px-2 !py-1.5 !text-xs"
+                  aria-expanded={typographyBlockId === block.id}
+                  onClick={() => setTypographyBlockId(typographyBlockId === block.id ? null : block.id)}
+                >
+                  Tipografía
+                  <span className="text-white/60">{getLyricPreset(block.typography)?.label ?? 'Del tema'}</span>
+                </button>
+                {typographyBlockId === block.id && (
+                  <LyricTypographyEditor
+                    block={block}
+                    theme={theme}
+                    selection={selection?.blockId === block.id ? selection : { start: 0, end: 0 }}
+                    onChange={(typography) => setBlock(block.id, { typography })}
+                  />
+                )}
               </div>
             ))}
           </div>

@@ -9,11 +9,31 @@ export type SlideBlockType =
   | 'scripture'
   | 'custom';
 
+export type LyricTypographyPreset = 'handwritten' | 'comic' | 'editorial';
+export type LyricAnimationSpeed = 'off' | 'slow' | 'normal' | 'fast';
+
+export interface LyricEmphasis {
+  start: number;
+  end: number;
+}
+
+export interface LyricTypography {
+  preset?: LyricTypographyPreset;
+  family?: string;
+  accentFamily?: string;
+  accentColor?: string;
+  accentScale?: number;
+  speed?: LyricAnimationSpeed;
+  /** Rangos en el texto unido por saltos de línea (UTF-16, como el textarea). */
+  emphasis?: LyricEmphasis[];
+}
+
 export interface SlideBlock {
   id: string;
   type: SlideBlockType;
   label?: string; // "Estrofa 1", "Coro"...
   lines: string[]; // líneas de texto crudas; una línea vacía crea un slide manual
+  typography?: LyricTypography;
 }
 
 export interface Song {
@@ -327,6 +347,7 @@ export interface RenderSlide {
   type: SlideBlockType;
   label?: string;
   lines: string[];
+  typography?: LyricTypography;
   partIndex: number;
   partCount: number;
   /** Sólo existe en slides bíblicos, p. ej. "Juan 3:16 — RV1909". */

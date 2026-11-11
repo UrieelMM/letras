@@ -320,7 +320,7 @@ export function ThemePanel() {
     <div className="h-full space-y-5 overflow-y-auto p-4">
       {/* Vista previa del tema */}
       <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10">
-        <SlideStage live={previewLive} scale={0.5} />
+        <SlideStage live={previewLive} />
       </div>
 
       {/* Selector de tema */}

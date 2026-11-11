@@ -1,4 +1,4 @@
-import type { RenderSlide, Song } from '../types';
+import type { RenderSlide, SlideBlock, Song } from '../types';
 
 /**
  * Convierte los bloques de una canción en slides renderizables.
@@ -6,40 +6,47 @@ import type { RenderSlide, Song } from '../types';
  * - Nunca divide automáticamente el contenido escrito por el usuario.
  */
 export function buildSlides(song: Song): RenderSlide[] {
-  const slides: RenderSlide[] = [];
+  return song.blocks.flatMap((block) => buildBlockSlides(block).map(({ slide }) => slide));
+}
 
-  for (const block of song.blocks) {
-    // Agrupa las líneas separándolas en cada línea en blanco.
-    const groups: string[][] = [];
-    let current: string[] = [];
-    for (const raw of block.lines) {
-      if (raw.trim().length === 0) {
-        if (current.length) {
-          groups.push(current);
-          current = [];
-        }
-      } else {
-        current.push(raw);
+export function buildBlockSlides(block: SlideBlock): { slide: RenderSlide; start: number }[] {
+  const groups: { lines: string[]; start: number; end: number }[] = [];
+  let offset = 0;
+  let current: (typeof groups)[number] | undefined;
+  for (const line of block.lines) {
+    if (line.trim()) {
+      if (!current) {
+        current = { lines: [], start: offset, end: offset };
+        groups.push(current);
       }
+      current.lines.push(line);
+      current.end = offset + line.length;
+    } else {
+      current = undefined;
     }
-    if (current.length) groups.push(current);
-
-    if (groups.length === 0) continue;
-
-    groups.forEach((group, idx) => {
-      slides.push({
-        id: `${block.id}-${idx}`,
-        blockId: block.id,
-        type: block.type,
-        label: block.label,
-        lines: group,
-        partIndex: idx,
-        partCount: groups.length,
-      });
-    });
+    offset += line.length + 1;
   }
 
-  return slides;
+  return groups.map(({ lines, start, end }, partIndex) => {
+    const slide: RenderSlide = {
+      id: `${block.id}-${partIndex}`,
+      blockId: block.id,
+      type: block.type,
+      label: block.label,
+      lines,
+      partIndex,
+      partCount: groups.length,
+    };
+    if (block.typography?.preset) {
+      slide.typography = {
+        ...block.typography,
+        emphasis: block.typography.emphasis
+          ?.filter((range) => range.start >= start && range.end <= end)
+          .map((range) => ({ start: range.start - start, end: range.end - start })),
+      };
+    }
+    return { slide, start };
+  });
 }
 
 export const BLOCK_LABELS: Record<string, string> = {

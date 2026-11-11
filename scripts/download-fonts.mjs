@@ -35,6 +35,10 @@ const families = [
   'Dancing+Script:wght@400;500;600;700',
   'Caveat:wght@400;500;600;700',
   'Cinzel:wght@700',
+  'Amatic+SC:wght@700',
+  'Bangers',
+  'Barlow+Condensed:wght@500;700;800',
+  'Kalam:wght@400;700',
 ];
 
 await mkdir(OUTPUT_DIR, { recursive: true });

@@ -20,7 +20,7 @@ export function LivePreview() {
       </div>
 
       <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 shadow-lg">
-        <SlideStage live={live} scale={0.5} />
+        <SlideStage live={live} />
       </div>
 
       <div className="mt-3 flex items-center gap-2">
