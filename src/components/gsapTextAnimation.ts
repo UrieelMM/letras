@@ -366,7 +366,7 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: n
         .set(target, { transformPerspective: 650 })
         .to(target, {
           x: '0.22em', y: '-0.13em', rotationY: 9, rotation: 1.8,
-          duration: 0.66, ease: 'sine.inOut',
+          duration: 0.825, ease: 'sine.inOut',
         })
         .to(target, {
           keyframes: {
@@ -376,7 +376,7 @@ function buildMotion(motion: TextMotionPreset, q: Q, root: HTMLElement, delay: n
             rotation: [1.8, -1.8],
             easeEach: 'sine.inOut',
           },
-          duration: 1.32, ease: 'none', repeat: -1, yoyo: true,
+          duration: 1.65, ease: 'none', repeat: -1, yoyo: true,
         });
       break;
     case 'rollingWave':
