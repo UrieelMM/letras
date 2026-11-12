@@ -1,5 +1,6 @@
 import type { Song, Theme } from '../types';
 import { REMOVED_THEME_IDS } from '../lib/removedThemes';
+import { KINETIC_BACKGROUNDS, KINETIC_BACKGROUND_PRESETS } from '../lib/kineticBackgrounds';
 import { SONGBOOK_SONGS } from './songbook.generated';
 
 type AnimatedThemePreset = Extract<Theme['background'], { kind: 'animated' }>['preset'];
@@ -2379,6 +2380,15 @@ const ALL_THEMES: Theme[] = [
     overlay: { preset: 'stars', color: '#ffb9f1', intensity: 0.75 },
     contrast: { overlayColor: '#000000', overlayOpacity: 0.2, blurPx: 0 },
   },
+  ...KINETIC_BACKGROUND_PRESETS.map((preset): Theme => {
+    const { id, label, colorA, colorB } = KINETIC_BACKGROUNDS[preset];
+    return {
+      ...reactBitsTheme(id, label, preset, colorA, colorB),
+      textReveal: 'linesUp',
+      textMotion: 'none',
+      contrast: { overlayColor: '#090a1b', overlayOpacity: 0.06, blurPx: 0 },
+    };
+  }),
   {
     id: 'theme-fiesta-robotica',
     name: 'Fiesta Robótica',

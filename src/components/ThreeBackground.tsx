@@ -6,13 +6,14 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js';
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import type { AnimatedBgPreset } from '../types';
+import type { KineticBackgroundPreset } from '../lib/kineticBackgrounds';
 
 // Renderizamos colores tal cual el hex (sin conversión a espacio lineal),
 // para que coincidan con la vista CSS y se vean vivos.
 THREE.ColorManagement.enabled = false;
 
 interface Props {
-  preset: AnimatedBgPreset;
+  preset: Exclude<AnimatedBgPreset, KineticBackgroundPreset>;
   colorA: string;
   colorB: string;
   // Efectos de postprocesado (opcionales)
@@ -75,7 +76,7 @@ type ExternalPreset =
   | 'glassTiles'
   | 'robotLights'
   | 'graphicWorlds';
-type ShaderPreset = Exclude<AnimatedBgPreset, ObjectPreset | ExternalPreset>;
+type ShaderPreset = Exclude<Props['preset'], ObjectPreset | ExternalPreset>;
 
 const MODE: Record<ShaderPreset, number> = {
   meshGradient: 0,

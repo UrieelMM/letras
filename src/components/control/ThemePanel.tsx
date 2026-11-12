@@ -7,6 +7,7 @@ import { FONT_OPTIONS, loadFont } from '../../lib/fonts';
 import { getThemeTextAnimation } from '../../lib/textAnimation';
 import { REMOVED_BG_PRESETS, REMOVED_THEME_IDS } from '../../lib/removedThemes';
 import { REACT_BITS_PRESETS, REACT_BITS_THEME_IDS } from '../../lib/reactBitsThemes';
+import { isKineticBackgroundPreset, KINETIC_BACKGROUNDS, KINETIC_BACKGROUND_PRESETS } from '../../lib/kineticBackgrounds';
 import { saveThemeImageLocally } from '../../media/localMedia';
 import type {
   AnimatedBgPreset,
@@ -657,19 +658,32 @@ export function ThemePanel() {
           <>
             <select
               className="input"
+              aria-label="Fondo animado"
               value={theme.background.preset}
-              onChange={(e) =>
+              onChange={(e) => {
+                const preset = e.target.value as AnimatedBgPreset;
+                const palette = isKineticBackgroundPreset(preset) ? KINETIC_BACKGROUNDS[preset] : undefined;
+                const previous = theme.background as Extract<BackgroundConfig, { kind: 'animated' }>;
                 updateBg({
-                  ...(theme.background as Extract<BackgroundConfig, { kind: 'animated' }>),
-                  preset: e.target.value as AnimatedBgPreset,
-                })
-              }
+                  ...previous,
+                  preset,
+                  colorA: palette?.colorA ?? previous.colorA,
+                  colorB: palette?.colorB ?? previous.colorB,
+                });
+              }}
             >
-              {ANIM_PRESETS.map((p) => (
-                <option key={p.value} value={p.value}>
-                  {REACT_BITS_PRESETS.has(p.value) ? `★ ${p.label}` : p.label}
-                </option>
-              ))}
+              <optgroup label="Fondos cinéticos">
+                {KINETIC_BACKGROUND_PRESETS.map((preset) => (
+                  <option key={preset} value={preset}>{KINETIC_BACKGROUNDS[preset].label}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Otros fondos animados">
+                {ANIM_PRESETS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {REACT_BITS_PRESETS.has(p.value) ? `★ ${p.label}` : p.label}
+                  </option>
+                ))}
+              </optgroup>
             </select>
             <ColorPair
               a={theme.background.colorA}

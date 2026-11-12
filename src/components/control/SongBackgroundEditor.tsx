@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { buildSlides, BLOCK_LABELS } from '../../lib/slides';
 import { REMOVED_THEME_IDS } from '../../lib/removedThemes';
+import { isKineticBackgroundPreset } from '../../lib/kineticBackgrounds';
 import { RESOURCE_CATEGORIES, resourceBackground } from '../../resources/model';
 import { useResourceLibrary } from '../../resources/ResourceLibrary';
 import { useStore } from '../../store/useStore';
@@ -86,6 +87,10 @@ function rowClass(active: boolean) {
 
 type Source = 'color' | 'theme' | 'media';
 
+function isKineticTheme(theme: Theme) {
+  return theme.background.kind === 'animated' && isKineticBackgroundPreset(theme.background.preset);
+}
+
 function BackgroundOptions({ background, inherited, resetLabel, onChange }: {
   background?: BackgroundConfig;
   inherited: BackgroundConfig;
@@ -137,7 +142,12 @@ function BackgroundOptions({ background, inherited, resetLabel, onChange }: {
             if (chosen) onChange(chosen.background);
           }}>
             <option value="" disabled>Elige un tema</option>
-            {themes.map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+            <optgroup label="Fondos cinéticos">
+              {themes.filter(isKineticTheme).map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+            </optgroup>
+            <optgroup label="Otros temas">
+              {themes.filter((theme) => !isKineticTheme(theme)).map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+            </optgroup>
           </select>
         </label>
       )}

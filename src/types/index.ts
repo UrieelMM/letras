@@ -1,4 +1,5 @@
 // ---------- Modelo de datos de Wordship Screen ----------
+import type { KineticBackgroundPreset } from '../lib/kineticBackgrounds';
 
 export type SlideBlockType =
   | 'verse'
@@ -143,6 +144,7 @@ export interface TextAnimationConfig {
 }
 
 export type AnimatedBgPreset =
+  | KineticBackgroundPreset
   | 'meshGradient'
   | 'particles'
   | 'aurora'
