@@ -191,10 +191,12 @@ export function SlideStage({ live, replay = 0 }: Props) {
   return (
     <div className="relative h-full w-full overflow-hidden bg-black" style={{ containerType: 'size' }}>
       {/* Fondo */}
-      {!blackout && <Background bg={theme.background} />}
+      {!blackout && (
+        <Background key={live.resource?.playbackId} bg={live.resource?.background ?? slide?.background ?? theme.background} />
+      )}
 
       {/* Capa de contraste para legibilidad sobre imagenes/fondos */}
-      {!blackout && theme.contrast.overlayOpacity > 0 && (
+      {!blackout && !live.resource && theme.contrast.overlayOpacity > 0 && (
         <div
           className="absolute inset-0"
           style={{
@@ -208,7 +210,7 @@ export function SlideStage({ live, replay = 0 }: Props) {
       )}
 
       {/* Efecto animado superpuesto (lluvia, nieve, estrellas...) */}
-      {!blackout && theme.overlay && theme.overlay.preset !== 'none' && (
+      {!blackout && !live.resource && theme.overlay && theme.overlay.preset !== 'none' && (
         <OverlayEffect config={theme.overlay} />
       )}
 

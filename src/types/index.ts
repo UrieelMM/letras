@@ -43,6 +43,7 @@ export interface SlideBlock {
   typography?: LyricTypography;
   textAnimation?: TextAnimationConfig;
   selectionAnimations?: LyricSelectionAnimation[];
+  slideBackgrounds?: SlideBackgroundOverride[];
 }
 
 export interface Song {
@@ -54,6 +55,7 @@ export interface Song {
   blocks: SlideBlock[];
   themeId?: string; // preset en el que se basa
   theme?: Theme; // copia de trabajo personalizada (no muta el preset)
+  background?: BackgroundConfig;
   createdAt: number;
   updatedAt: number;
 }
@@ -300,6 +302,7 @@ export type BackgroundConfig =
   | { kind: 'solid'; color: string }
   | { kind: 'gradient'; from: string; to: string; angle: number }
   | { kind: 'image'; url: string; fit: 'cover' | 'contain' }
+  | { kind: 'video'; url: string; fit: 'cover' | 'contain'; loop?: boolean }
   | {
       kind: 'animated';
       preset: AnimatedBgPreset;
@@ -313,6 +316,11 @@ export type BackgroundConfig =
       trails?: number; // estelas / persistencia (0 = off, típico 0.7–0.92)
       grain?: number; // grano de película (0 = off, típico 0.2–0.5)
     };
+
+export interface SlideBackgroundOverride {
+  partIndex: number;
+  background: BackgroundConfig;
+}
 
 export interface Theme {
   id: string;
@@ -382,6 +390,7 @@ export interface RenderSlide {
   typography?: LyricTypography;
   textAnimation?: TextAnimationConfig;
   selectionAnimations?: LyricSelectionAnimation[];
+  background?: BackgroundConfig;
   partIndex: number;
   partCount: number;
   /** Sólo existe en slides bíblicos, p. ej. "Juan 3:16 — RV1909". */
@@ -398,6 +407,7 @@ export interface LiveState {
   showLogo: boolean;
   logoUrl?: string;
   clearText: boolean; // oculta el texto, mantiene el fondo
+  resource?: { id: string; playbackId: string; title: string; background: BackgroundConfig };
 }
 
 export interface OutputStatus {

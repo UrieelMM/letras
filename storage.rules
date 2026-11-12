@@ -3,8 +3,22 @@ rules_version = '2';
 // Archivos (imágenes/videos de fondo) aislados por usuario.
 service firebase.storage {
   match /b/{bucket}/o {
-    match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    function owns(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/resources/{resourceId} {
+      allow read, delete: if owns(userId);
+      allow create: if owns(userId) && request.resource.size > 0 && (
+        (request.resource.contentType.matches('image/(jpeg|png|webp|gif|avif)') &&
+          request.resource.size <= 25 * 1024 * 1024) ||
+        (request.resource.contentType.matches('video/(mp4|webm)') &&
+          request.resource.size <= 250 * 1024 * 1024)
+      );
+    }
+
+    match /users/{userId}/{folder}/{path=**} {
+      allow read, write: if folder != 'resources' && owns(userId);
     }
   }
 }

@@ -7,9 +7,27 @@ import { LivePreview } from './LivePreview';
 import { ThemePanel } from './ThemePanel';
 import { SongEditor } from './SongEditor';
 import { BiblePanel } from './BiblePanel';
+import { ResourceCategories, ResourcesPanel } from './ResourcesPanel';
+import { ResourceLibraryProvider } from '../../resources/ResourceLibrary';
+import type { ResourceFilter } from '../../resources/model';
 import { requestOutputFullscreen } from '../../sync/screens';
 
+const WORKSPACES = [
+  { id: 'lyrics', label: 'Letras' },
+  { id: 'bible', label: 'Biblia' },
+  { id: 'resources', label: 'Recursos' },
+] as const;
+
 export function ControlView() {
+  const userId = useStore((s) => s.userId);
+  return (
+    <ResourceLibraryProvider key={userId ?? 'guest'} userId={userId}>
+      <ControlWorkspace />
+    </ResourceLibraryProvider>
+  );
+}
+
+function ControlWorkspace() {
   const editingSongId = useStore((s) => s.editingSongId);
   const setEditingSong = useStore((s) => s.setEditingSong);
   const next = useStore((s) => s.next);
@@ -19,6 +37,8 @@ export function ControlView() {
   const workspaceTab = useStore((s) => s.workspaceTab);
   const setWorkspaceTab = useStore((s) => s.setWorkspaceTab);
   const [rightTab, setRightTab] = useState<'preview' | 'theme'>('preview');
+  const [resourceCategory, setResourceCategory] = useState<ResourceFilter>('all');
+  const isResources = workspaceTab === 'resources';
 
   useEffect(() => {
     document.title = 'Wordship Screen — Control';
@@ -33,10 +53,12 @@ export function ControlView() {
       switch (e.key) {
         case 'ArrowRight':
         case ' ':
+          if (isResources || (e.key === ' ' && target.closest('button, a, video'))) return;
           e.preventDefault();
           next();
           break;
         case 'ArrowLeft':
+          if (isResources) return;
           e.preventDefault();
           prev();
           break;
@@ -56,33 +78,38 @@ export function ControlView() {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [next, prev, toggleBlackout, toggleLogo, editingSongId]);
+  }, [next, prev, toggleBlackout, toggleLogo, editingSongId, isResources]);
 
   return (
     <div className="flex h-screen flex-col bg-ink-900 text-white">
       <Toolbar />
 
-      <div className="grid min-h-0 flex-1 grid-cols-[320px_minmax(400px,1fr)_420px]">
+      <div className={`grid min-h-0 flex-1 ${isResources
+        ? 'grid-cols-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[200px_minmax(0,1fr)] md:grid-rows-1 xl:grid-cols-[240px_minmax(0,1fr)_360px]'
+        : 'grid-cols-[320px_minmax(400px,1fr)_420px]'}`}>
         {/* Izquierda: letras / Biblia */}
         <aside className="flex min-h-0 flex-col border-r border-white/5 bg-ink-800/40">
-          <div className="grid grid-cols-2 gap-1 border-b border-white/5 p-2">
-            {(['lyrics', 'bible'] as const).map((tab) => (
+          <nav aria-label="Espacio de trabajo" className="grid grid-cols-3 gap-1 border-b border-white/5 p-2">
+            {WORKSPACES.map(({ id, label }) => (
               <button
-                key={tab}
-                onClick={() => setWorkspaceTab(tab)}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-                  workspaceTab === tab
+                key={id}
+                aria-pressed={workspaceTab === id}
+                onClick={() => setWorkspaceTab(id)}
+                className={`rounded-lg px-1 py-2 text-xs font-semibold transition ${
+                  workspaceTab === id
                     ? 'bg-accent text-white shadow-glow'
                     : 'text-white/45 hover:bg-white/5 hover:text-white/75'
                 }`}
               >
-                {tab === 'lyrics' ? 'Letras' : 'Biblia'}
+                {label}
               </button>
             ))}
-          </div>
+          </nav>
           <div className="min-h-0 flex-1">
             {workspaceTab === 'lyrics' ? (
               <Library onEdit={(id) => setEditingSong(id)} />
+            ) : isResources ? (
+              <ResourceCategories category={resourceCategory} onChange={setResourceCategory} />
             ) : (
               <BiblePanel />
             )}
@@ -91,13 +118,15 @@ export function ControlView() {
 
         {/* Centro: slides */}
         <main className="min-h-0 bg-ink-900">
-          <SlidesGrid />
+          {isResources
+            ? <ResourcesPanel category={resourceCategory} onCategoryChange={setResourceCategory} />
+            : <SlidesGrid />}
         </main>
 
         {/* Derecha: preview + personalización */}
-        <aside className="flex min-h-0 flex-col border-l border-white/5 bg-ink-800/40">
+        <aside className={`min-h-0 flex-col border-l border-white/5 bg-ink-800/40 ${isResources ? 'hidden xl:flex' : 'flex'}`}>
           <div className="flex gap-1 border-b border-white/5 p-2">
-            {(['preview', 'theme'] as const).map((tab) => (
+            {isResources ? <p className="px-3 py-2 text-xs font-semibold text-white/75">Salida</p> : (['preview', 'theme'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setRightTab(tab)}
@@ -112,7 +141,7 @@ export function ControlView() {
             ))}
           </div>
           <div className="min-h-0 flex-1 overflow-hidden">
-            {rightTab === 'preview' ? (
+            {isResources || rightTab === 'preview' ? (
               <div className="p-4">
                 <LivePreview />
               </div>

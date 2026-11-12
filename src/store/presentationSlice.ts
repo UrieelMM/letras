@@ -2,6 +2,8 @@ import type { LiveState } from '../types';
 import type { PresentationSlice, SliceCreator } from './types';
 import { buildSlides } from '../lib/slides';
 import { DEFAULT_THEMES } from '../data/seed';
+import { uid } from '../lib/id';
+import { resourceBackground } from '../resources/model';
 
 export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, get) => ({
   workspaceTab: 'lyrics',
@@ -25,7 +27,8 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
   setWorkspaceTab: (workspaceTab) => {
     const state = get();
     const song = state.songs.find((item) => item.id === state.activeSongId) ?? null;
-    const slides = workspaceTab === 'bible' ? state.bibleSlides : song ? buildSlides(song) : [];
+    const slides = workspaceTab === 'bible' ? state.bibleSlides
+      : workspaceTab === 'lyrics' && song ? buildSlides(song) : [];
     set({ workspaceTab, slides, liveSlideIndex: -1 });
   },
 
@@ -50,6 +53,25 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
       clearText: false,
     };
     set({ live, liveSlideIndex: slideIndex });
+    get()._publish?.(live);
+  },
+
+  goLiveResource: (resource) => {
+    const live: LiveState = {
+      slide: null,
+      theme: get().live.theme,
+      blackout: false,
+      showLogo: false,
+      logoUrl: get().settings.logoUrl,
+      clearText: false,
+      resource: {
+        id: resource.id,
+        title: resource.title,
+        playbackId: uid(),
+        background: resourceBackground(resource, 'contain', false),
+      },
+    };
+    set({ live, liveSlideIndex: -1 });
     get()._publish?.(live);
   },
 
@@ -92,6 +114,7 @@ export const createPresentationSlice: SliceCreator<PresentationSlice> = (set, ge
     const live: LiveState = {
       ...get().live,
       slide: null,
+      resource: undefined,
       blackout: false,
       showLogo: false,
       clearText: false,

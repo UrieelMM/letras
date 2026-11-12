@@ -225,7 +225,7 @@ export function ThemePanel() {
 
   const sampleSlide = slides[0] ?? SAMPLE_SLIDE;
   const previewLive: LiveState = {
-    slide: { ...sampleSlide, textAnimation: undefined },
+    slide: { ...sampleSlide, textAnimation: undefined, background: undefined },
     theme,
     blackout: false,
     showLogo: false,

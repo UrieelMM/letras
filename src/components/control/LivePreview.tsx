@@ -7,6 +7,8 @@ export function LivePreview() {
   const prev = useStore((s) => s.prev);
   const liveSlideIndex = useStore((s) => s.liveSlideIndex);
   const slides = useStore((s) => s.slides);
+  const resourceWorkspace = useStore((s) => s.workspaceTab === 'resources');
+  const clearLive = useStore((s) => s.clearLive);
 
   return (
     <div className="flex flex-col">
@@ -19,24 +21,29 @@ export function LivePreview() {
         </span>
       </div>
 
+      {live.resource && <p className="mb-2 truncate text-sm text-white/80">{live.resource.title}</p>}
       <div className="aspect-video w-full overflow-hidden rounded-xl border border-white/10 shadow-lg">
         <SlideStage live={live} />
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <button className="btn-soft flex-1" onClick={prev} disabled={liveSlideIndex <= 0}>
-          ◀ Anterior
-        </button>
-        <button
-          className="btn-accent flex-1"
-          onClick={next}
-          disabled={liveSlideIndex < 0 || liveSlideIndex >= slides.length - 1}
-        >
-          Siguiente ▶
-        </button>
-      </div>
+      {resourceWorkspace ? live.resource && (
+        <button className="btn-soft mt-3" onClick={clearLive}>Retirar recurso de la salida</button>
+      ) : (
+        <div className="mt-3 flex items-center gap-2">
+          <button className="btn-soft flex-1" onClick={prev} disabled={liveSlideIndex <= 0}>
+            ◀ Anterior
+          </button>
+          <button
+            className="btn-accent flex-1"
+            onClick={next}
+            disabled={liveSlideIndex < 0 || liveSlideIndex >= slides.length - 1}
+          >
+            Siguiente ▶
+          </button>
+        </div>
+      )}
       <p className="mt-2 text-center text-[11px] text-white/30">
-        Atajos: ← → o Espacio para navegar · B blackout · L logo
+        {resourceWorkspace ? 'B blackout · L logo · F pantalla completa' : 'Atajos: ← → o Espacio para navegar · B blackout · L logo'}
       </p>
     </div>
   );

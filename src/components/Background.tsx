@@ -46,7 +46,7 @@ interface Props {
 }
 
 export function Background({ bg }: Props) {
-  const imageUrl = useLocalMediaUrl(bg.kind === 'image' ? bg.url : undefined);
+  const mediaUrl = useLocalMediaUrl(bg.kind === 'image' || bg.kind === 'video' ? bg.url : undefined);
 
   switch (bg.kind) {
     case 'solid':
@@ -61,10 +61,24 @@ export function Background({ bg }: Props) {
     case 'image':
       return (
         <div
-          className="absolute inset-0 bg-center"
-          style={{ backgroundImage: imageUrl ? `url(${imageUrl})` : undefined, backgroundSize: bg.fit }}
+          className="absolute inset-0 bg-center bg-no-repeat"
+          style={{ backgroundImage: mediaUrl ? `url("${mediaUrl}")` : undefined, backgroundSize: bg.fit }}
         />
       );
+    case 'video':
+      return mediaUrl ? (
+        <video
+          key={mediaUrl}
+          className="absolute inset-0 h-full w-full"
+          style={{ objectFit: bg.fit }}
+          src={mediaUrl}
+          autoPlay
+          muted
+          playsInline
+          loop={bg.loop !== false}
+          aria-hidden="true"
+        />
+      ) : null;
     case 'animated':
       if (bg.preset === 'shaderWaves') {
         return (

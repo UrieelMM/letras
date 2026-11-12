@@ -1,5 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import {
   initializeFirestore,
   persistentLocalCache,
@@ -35,3 +36,4 @@ if (isFirebaseConfigured) {
 
 export const auth = authInstance;
 export const db = dbInstance;
+export const storage = app && cfg.storageBucket ? getStorage(app) : null;

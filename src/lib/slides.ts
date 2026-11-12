@@ -1,4 +1,4 @@
-import type { RenderSlide, SlideBlock, Song } from '../types';
+import type { BackgroundConfig, RenderSlide, SlideBlock, Song } from '../types';
 
 /**
  * Convierte los bloques de una canción en slides renderizables.
@@ -6,10 +6,10 @@ import type { RenderSlide, SlideBlock, Song } from '../types';
  * - Nunca divide automáticamente el contenido escrito por el usuario.
  */
 export function buildSlides(song: Song): RenderSlide[] {
-  return song.blocks.flatMap((block) => buildBlockSlides(block).map(({ slide }) => slide));
+  return song.blocks.flatMap((block) => buildBlockSlides(block, song.background).map(({ slide }) => slide));
 }
 
-export function buildBlockSlides(block: SlideBlock): { slide: RenderSlide; start: number }[] {
+export function buildBlockSlides(block: SlideBlock, songBackground?: BackgroundConfig): { slide: RenderSlide; start: number }[] {
   const groups: { lines: string[]; start: number; end: number }[] = [];
   let offset = 0;
   let current: (typeof groups)[number] | undefined;
@@ -37,6 +37,8 @@ export function buildBlockSlides(block: SlideBlock): { slide: RenderSlide; start
       partIndex,
       partCount: groups.length,
     };
+    const background = block.slideBackgrounds?.find((item) => item.partIndex === partIndex)?.background ?? songBackground;
+    if (background) slide.background = background;
     if (block.textAnimation) slide.textAnimation = block.textAnimation;
     if (block.selectionAnimations?.length) {
       const selections = rangesInSlide(block.selectionAnimations, start, end);

@@ -3,9 +3,11 @@ import { useStore } from '../../store/useStore';
 import { toast } from '../../store/toastStore';
 import { uid } from '../../lib/id';
 import { rebaseLyricRanges } from '../../lib/lyricTypography';
+import { rebaseSlideBackgrounds } from '../../lib/slideBackgrounds';
 import { BLOCK_LABELS } from '../../lib/slides';
 import type { LyricEmphasis, SlideBlock, SlideBlockType, Song } from '../../types';
 import { LyricTypographyEditor } from './LyricTypographyEditor';
+import { SongBackgroundEditor } from './SongBackgroundEditor';
 
 interface Props {
   songId: string;
@@ -20,6 +22,7 @@ export function SongEditor({ songId, onClose }: Props) {
   const original = songs.find((s) => s.id === songId);
   const [draft, setDraft] = useState<Song | null>(original ?? null);
   const [tagsText, setTagsText] = useState(original?.tags.join(', ') ?? '');
+  const [editorTab, setEditorTab] = useState<'lyrics' | 'backgrounds'>('lyrics');
   const [typographyBlockId, setTypographyBlockId] = useState<string | null>(null);
   const [selection, setSelection] = useState<(LyricEmphasis & { blockId: string }) | null>(null);
   const theme = useStore((s) => s.themeForSong(draft));
@@ -29,6 +32,7 @@ export function SongEditor({ songId, onClose }: Props) {
     setTagsText(original?.tags.join(', ') ?? '');
     setTypographyBlockId(null);
     setSelection(null);
+    setEditorTab('lyrics');
   }, [songId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Si la canción llega después (carga async / Firestore), rellena el borrador.
@@ -52,7 +56,8 @@ export function SongEditor({ songId, onClose }: Props) {
   function updateLyrics(block: SlideBlock, value: string, caret: number) {
     const typography = block.typography;
     const before = block.lines.join('\n');
-    const patch: Partial<SlideBlock> = { lines: value.split('\n') };
+    const lines = value.split('\n');
+    const patch: Partial<SlideBlock> = { lines };
     if (typography?.emphasis?.length) {
       patch.typography = {
         ...typography,
@@ -61,6 +66,9 @@ export function SongEditor({ songId, onClose }: Props) {
     }
     if (block.selectionAnimations?.length) {
       patch.selectionAnimations = rebaseLyricRanges(block.selectionAnimations, before, value, caret);
+    }
+    if (block.slideBackgrounds?.length) {
+      patch.slideBackgrounds = rebaseSlideBackgrounds(block, lines, caret);
     }
     setBlock(block.id, patch);
   }
@@ -117,113 +125,145 @@ export function SongEditor({ songId, onClose }: Props) {
           </button>
         </div>
 
+        <nav aria-label="Opciones de edición de canción" className="flex gap-1 border-b border-white/10 px-5 py-2">
+          {([['lyrics', 'Letra'], ['backgrounds', 'Fondos']] as const).map(([id, label]) => (
+            <button
+              key={id}
+              className={`btn-soft ${editorTab === id ? '!bg-accent/20 !text-white' : ''}`}
+              aria-pressed={editorTab === id}
+              onClick={() => setEditorTab(id)}
+            >{label}</button>
+          ))}
+        </nav>
+
         <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Título</label>
-              <input
-                className="input"
-                value={draft.title}
-                onChange={(e) => set({ title: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="label">Autor</label>
-              <input
-                className="input"
-                value={draft.author ?? ''}
-                onChange={(e) => set({ author: e.target.value })}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="label">Etiquetas (separadas por coma)</label>
-            <input
-              className="input"
-              value={tagsText}
-              placeholder="Ej. alabanza, adoración, himno"
-              onChange={(e) => setTagsText(e.target.value)}
+          {editorTab === 'backgrounds' ? (
+            <SongBackgroundEditor
+              song={draft}
+              theme={theme}
+              onSongBackground={(background) => set({ background })}
+              onSlideBackground={(blockId, partIndex, background) => {
+                setDraft((current) => current && {
+                  ...current,
+                  blocks: current.blocks.map((block) => {
+                    if (block.id !== blockId) return block;
+                    const others = block.slideBackgrounds?.filter((item) => item.partIndex !== partIndex) ?? [];
+                    return { ...block, slideBackgrounds: background ? [...others, { partIndex, background }] : others };
+                  }),
+                });
+              }}
             />
-          </div>
-
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50">
-                Secciones
-              </h3>
-              <button className="btn-soft !py-1.5 text-xs" onClick={addBlock}>
-                + Sección
-              </button>
-            </div>
-            <p className="text-[11px] text-white/40">
-              Cada sección permanece en una sola diapositiva. Solo una línea en blanco crea
-              una nueva diapositiva.
-            </p>
-
-            {draft.blocks.map((block) => (
-              <div key={block.id} className="rounded-xl border border-white/10 bg-ink-900/50 p-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <select
-                    className="input !w-auto !py-1.5 text-xs"
-                    value={block.type}
-                    onChange={(e) =>
-                      setBlock(block.id, { type: e.target.value as SlideBlockType })
-                    }
-                  >
-                    {TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {BLOCK_LABELS[t]}
-                      </option>
-                    ))}
-                  </select>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Título</label>
                   <input
-                    className="input !py-1.5 text-xs"
-                    placeholder="Etiqueta (opcional, ej. Estrofa 1)"
-                    value={block.label ?? ''}
-                    onChange={(e) => setBlock(block.id, { label: e.target.value })}
+                    className="input"
+                    value={draft.title}
+                    onChange={(e) => set({ title: e.target.value })}
                   />
-                  <div className="flex shrink-0 gap-1">
-                    <button className="btn-ghost !p-1.5" onClick={() => move(block.id, -1)}>
-                      ↑
-                    </button>
-                    <button className="btn-ghost !p-1.5" onClick={() => move(block.id, 1)}>
-                      ↓
-                    </button>
-                    <button
-                      className="btn-ghost !p-1.5 hover:!text-red-300"
-                      onClick={() => removeBlock(block.id)}
-                    >
-                      ✕
-                    </button>
-                  </div>
                 </div>
-                <textarea
-                  aria-label={'Letra de ' + (block.label || BLOCK_LABELS[block.type])}
-                  className="input min-h-[120px] resize-y font-mono text-xs leading-relaxed"
-                  placeholder={'Una línea por renglón.\nDeja una línea en blanco para separar diapositivas.'}
-                  value={block.lines.join('\n')}
-                  onChange={(e) => {
-                    setSelection(null);
-                    updateLyrics(block, e.currentTarget.value, e.currentTarget.selectionStart);
-                  }}
-                  onSelect={(e) => {
-                    const { selectionStart, selectionEnd } = e.currentTarget;
-                    setSelection({ blockId: block.id, start: selectionStart, end: selectionEnd });
-                  }}
-                />
-                <LyricTypographyEditor
-                  block={block}
-                  theme={theme}
-                  selection={selection?.blockId === block.id ? selection : null}
-                  open={typographyBlockId === block.id}
-                  onOpenChange={(open) => setTypographyBlockId(open ? block.id : null)}
-                  onChange={(typography) => setBlock(block.id, { typography })}
-                  onAnimationChange={(textAnimation) => setBlock(block.id, { textAnimation })}
-                  onSelectionAnimationsChange={(selectionAnimations) => setBlock(block.id, { selectionAnimations })}
+                <div>
+                  <label className="label">Autor</label>
+                  <input
+                    className="input"
+                    value={draft.author ?? ''}
+                    onChange={(e) => set({ author: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="label">Etiquetas (separadas por coma)</label>
+                <input
+                  className="input"
+                  value={tagsText}
+                  placeholder="Ej. alabanza, adoración, himno"
+                  onChange={(e) => setTagsText(e.target.value)}
                 />
               </div>
-            ))}
-          </div>
+
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-white/50">
+                    Secciones
+                  </h3>
+                  <button className="btn-soft !py-1.5 text-xs" onClick={addBlock}>
+                    + Sección
+                  </button>
+                </div>
+                <p className="text-[11px] text-white/40">
+                  Cada sección permanece en una sola diapositiva. Solo una línea en blanco crea
+                  una nueva diapositiva.
+                </p>
+
+                {draft.blocks.map((block) => (
+                  <div key={block.id} className="rounded-xl border border-white/10 bg-ink-900/50 p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <select
+                        className="input !w-auto !py-1.5 text-xs"
+                        value={block.type}
+                        onChange={(e) =>
+                          setBlock(block.id, { type: e.target.value as SlideBlockType })
+                        }
+                      >
+                        {TYPES.map((t) => (
+                          <option key={t} value={t}>
+                            {BLOCK_LABELS[t]}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        className="input !py-1.5 text-xs"
+                        placeholder="Etiqueta (opcional, ej. Estrofa 1)"
+                        value={block.label ?? ''}
+                        onChange={(e) => setBlock(block.id, { label: e.target.value })}
+                      />
+                      <div className="flex shrink-0 gap-1">
+                        <button className="btn-ghost !p-1.5" onClick={() => move(block.id, -1)}>
+                          ↑
+                        </button>
+                        <button className="btn-ghost !p-1.5" onClick={() => move(block.id, 1)}>
+                          ↓
+                        </button>
+                        <button
+                          className="btn-ghost !p-1.5 hover:!text-red-300"
+                          onClick={() => removeBlock(block.id)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      aria-label={'Letra de ' + (block.label || BLOCK_LABELS[block.type])}
+                      className="input min-h-[120px] resize-y font-mono text-xs leading-relaxed"
+                      placeholder={'Una línea por renglón.\nDeja una línea en blanco para separar diapositivas.'}
+                      value={block.lines.join('\n')}
+                      onChange={(e) => {
+                        setSelection(null);
+                        updateLyrics(block, e.currentTarget.value, e.currentTarget.selectionStart);
+                      }}
+                      onSelect={(e) => {
+                        const { selectionStart, selectionEnd } = e.currentTarget;
+                        setSelection({ blockId: block.id, start: selectionStart, end: selectionEnd });
+                      }}
+                    />
+                    <LyricTypographyEditor
+                      block={block}
+                      theme={theme}
+                      songBackground={draft.background}
+                      selection={selection?.blockId === block.id ? selection : null}
+                      open={typographyBlockId === block.id}
+                      onOpenChange={(open) => setTypographyBlockId(open ? block.id : null)}
+                      onChange={(typography) => setBlock(block.id, { typography })}
+                      onAnimationChange={(textAnimation) => setBlock(block.id, { textAnimation })}
+                      onSelectionAnimationsChange={(selectionAnimations) => setBlock(block.id, { selectionAnimations })}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-white/10 px-5 py-4">

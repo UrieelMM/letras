@@ -416,15 +416,18 @@ Stack de Firebase usado:
   `onSnapshot`) — esto habilita, por ejemplo, control remoto desde el móvil.
 - **IndexedDB local** para logos e imágenes de fondo, de modo que sigan
   disponibles aunque Firebase o Internet no respondan.
+- **Cloud Storage** para las imágenes y los videos de **Recursos**. Los archivos
+  y sus fichas de Firestore están bajo `users/{uid}/resources/{resourceId}`.
+  En modo sin cuenta, los archivos se guardan en IndexedDB.
 
 ### Configuración
 
 1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com/),
    habilita **Authentication** (proveedores Correo/contraseña y Google) y
-   **Cloud Firestore**.
+   **Cloud Firestore**. Habilita **Cloud Storage** para usar Recursos con una cuenta.
 2. Copia `.env.example` a `.env` y rellena las llaves del SDK
    (Configuración del proyecto → Tus apps → SDK).
-3. Publica las reglas de seguridad incluidas en `firestore.rules`.
+3. Publica las reglas de Firestore y Storage con `firebase deploy --only firestore:rules,storage`.
 4. `npm run dev`. Si las llaves están presentes, aparece la pantalla de login;
    si no, la app corre en **modo local** sin cuenta.
 

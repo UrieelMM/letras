@@ -80,14 +80,7 @@ export function mergeEmphasis(ranges: LyricEmphasis[]): LyricEmphasis[] {
   return merged;
 }
 
-/** Conserva las marcas intactas al editar el texto a su alrededor. */
-export function rebaseLyricRanges<T extends LyricEmphasis>(
-  ranges: T[],
-  before: string,
-  after: string,
-  caret: number,
-): T[] {
-  if (!ranges.length || before === after) return ranges;
+export function findLyricEdit(before: string, after: string, caret: number) {
   const delta = after.length - before.length;
   const previousCaret = caret - delta;
   // El cursor desambigua ediciones al lado de texto idéntico (p. ej. "luz luz").
@@ -102,6 +95,18 @@ export function rebaseLyricRanges<T extends LyricEmphasis>(
     oldEnd--;
     newEnd--;
   }
+  return { start, oldEnd, newEnd, delta };
+}
+
+/** Conserva las marcas intactas al editar el texto a su alrededor. */
+export function rebaseLyricRanges<T extends LyricEmphasis>(
+  ranges: T[],
+  before: string,
+  after: string,
+  caret: number,
+): T[] {
+  if (!ranges.length || before === after) return ranges;
+  const { start, oldEnd, delta } = findLyricEdit(before, after, caret);
   return ranges.flatMap((range) => {
     if (range.end > start && range.start < oldEnd) return [];
     const shifted = range.end <= start

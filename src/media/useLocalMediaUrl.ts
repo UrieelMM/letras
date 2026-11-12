@@ -3,29 +3,20 @@ import { isLocalMediaUrl, loadLocalMediaBlob } from './localMedia';
 
 /** Convierte una referencia persistente de IndexedDB en una URL visible por el navegador. */
 export function useLocalMediaUrl(reference: string | null | undefined): string | undefined {
-  const [resolved, setResolved] = useState<string | undefined>(() => (
-    reference && !isLocalMediaUrl(reference) ? reference : undefined
-  ));
+  const [resolved, setResolved] = useState<{ reference: string; url: string }>();
 
   useEffect(() => {
     let active = true;
     let objectUrl: string | null = null;
 
-    if (!reference) {
-      setResolved(undefined);
-      return () => { active = false; };
-    }
-    if (!isLocalMediaUrl(reference)) {
-      setResolved(reference);
-      return () => { active = false; };
-    }
+    if (!isLocalMediaUrl(reference)) return;
 
     setResolved(undefined);
     void loadLocalMediaBlob(reference).then((blob) => {
       if (!active || !blob) return;
       objectUrl = URL.createObjectURL(blob);
-      setResolved(objectUrl);
-    });
+      setResolved({ reference, url: objectUrl });
+    }).catch(() => {});
 
     return () => {
       active = false;
@@ -33,5 +24,7 @@ export function useLocalMediaUrl(reference: string | null | undefined): string |
     };
   }, [reference]);
 
-  return resolved;
+  return isLocalMediaUrl(reference)
+    ? (resolved?.reference === reference ? resolved?.url : undefined)
+    : reference ?? undefined;
 }

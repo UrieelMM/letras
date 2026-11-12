@@ -8,6 +8,7 @@ import type {
   Theme,
 } from '../types';
 import type { BibleVerse, BibleVersion } from '../bible/types';
+import type { MediaResource } from '../resources/model';
 
 export interface Backup {
   version: 2;
@@ -49,18 +50,19 @@ export interface LibrarySlice {
 
 /** Estado de presentación / proyección y selección. */
 export interface PresentationSlice {
-  workspaceTab: 'lyrics' | 'bible';
+  workspaceTab: 'lyrics' | 'bible' | 'resources';
   activeSongId: string | null;
   editingSongId: string | null;
   live: LiveState;
   slides: RenderSlide[];
   liveSlideIndex: number;
 
-  setWorkspaceTab: (tab: 'lyrics' | 'bible') => void;
+  setWorkspaceTab: (tab: PresentationSlice['workspaceTab']) => void;
   setActiveSong: (id: string) => void;
   setEditingSong: (id: string | null) => void;
 
   goLive: (slideIndex: number) => void;
+  goLiveResource: (resource: MediaResource) => void;
   next: () => void;
   prev: () => void;
   toggleBlackout: () => void;

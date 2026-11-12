@@ -7,7 +7,7 @@ import {
 import { buildBlockSlides } from '../../lib/slides';
 import { DEFAULT_SELECTION_ANIMATION, getThemeTextAnimation, replaceSelectionAnimations } from '../../lib/textAnimation';
 import type {
-  LyricAnimationSpeed, LyricEmphasis, LyricSelectionAnimation, LyricTypography,
+  BackgroundConfig, LyricAnimationSpeed, LyricEmphasis, LyricSelectionAnimation, LyricTypography,
   LyricTypographyPreset, SlideBlock, TextAnimationConfig, Theme,
 } from '../../types';
 import { SlideStage } from '../SlideStage';
@@ -16,6 +16,7 @@ import { TextAnimationFields } from './TextAnimationFields';
 interface Props {
   block: SlideBlock;
   theme: Theme;
+  songBackground?: BackgroundConfig;
   selection: LyricEmphasis | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -27,12 +28,12 @@ interface Props {
 const PRESETS = Object.entries(LYRIC_PRESETS) as [LyricTypographyPreset, (typeof LYRIC_PRESETS)[LyricTypographyPreset]][];
 
 export function LyricTypographyEditor({
-  block, theme, selection, open, onOpenChange, onChange, onAnimationChange, onSelectionAnimationsChange,
+  block, theme, songBackground, selection, open, onOpenChange, onChange, onAnimationChange, onSelectionAnimationsChange,
 }: Props) {
   const [part, setPart] = useState(0);
   const [replay, setReplay] = useState(0);
   const [animationGroupId, setAnimationGroupId] = useState<string | null>(null);
-  const slides = useMemo(() => open ? buildBlockSlides(block) : [], [block, open]);
+  const slides = useMemo(() => open ? buildBlockSlides(block, songBackground) : [], [block, open, songBackground]);
   const index = Math.min(part, Math.max(0, slides.length - 1));
   const slide = slides[index]?.slide ?? null;
   const typography = block.typography;

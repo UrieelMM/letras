@@ -2,7 +2,7 @@ const DB_NAME = 'wordship-media';
 const STORE_NAME = 'assets';
 const URL_PREFIX = 'wordship-media:';
 
-type MediaKind = 'theme' | 'logo';
+type MediaKind = 'theme' | 'logo' | 'resource';
 
 interface StoredMedia {
   blob: Blob;
@@ -45,6 +45,14 @@ async function saveLocalImage(
     throw new Error(`La imagen no puede pesar más de ${Math.round(maxBytes / 1024 / 1024)} MB.`);
   }
 
+  return saveLocalMedia(file, kind, onProgress);
+}
+
+async function saveLocalMedia(
+  file: File,
+  kind: MediaKind,
+  onProgress?: (progress: number) => void,
+): Promise<string> {
   onProgress?.(10);
   const db = await openMediaDb();
   const id = `${kind}-${Date.now()}-${crypto.randomUUID()}`;
@@ -65,6 +73,21 @@ async function saveLocalImage(
 
   onProgress?.(100);
   return `${URL_PREFIX}${id}`;
+}
+
+export function saveLocalResource(file: File, onProgress?: (progress: number) => void): Promise<string> {
+  return saveLocalMedia(file, 'resource', onProgress);
+}
+
+export async function removeLocalResource(reference: string): Promise<void> {
+  if (!reference.startsWith(`${URL_PREFIX}resource-`)) return;
+  const db = await openMediaDb();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    transaction.objectStore(STORE_NAME).delete(reference.slice(URL_PREFIX.length));
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error);
+  });
 }
 
 export function saveThemeImageLocally(
