@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { resourceUploadErrorMessage } from '../../lib/userFacingError';
 import { RESOURCE_ACCEPT, RESOURCE_CATEGORIES, validateResource, type MediaResource, type ResourceCategory } from '../../resources/model';
 import { useResourceLibrary } from '../../resources/ResourceLibrary';
 
@@ -25,8 +26,7 @@ export function ResourceUploadForm({ category: initialCategory, onUploaded, onCa
       const resource = await repo.upload(file, { title, category }, setProgress);
       onUploaded(resource);
     } catch (error) {
-      setError(error instanceof Error && !('code' in error)
-        ? error.message : 'No se pudo guardar el recurso. Revisa tu conexión e inténtalo de nuevo.');
+      setError(resourceUploadErrorMessage(error));
     } finally {
       uploading.current = false;
       setProgress(null);

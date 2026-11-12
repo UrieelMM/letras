@@ -424,12 +424,22 @@ Stack de Firebase usado:
 
 1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com/),
    habilita **Authentication** (proveedores Correo/contraseña y Google) y
-   **Cloud Firestore**. Habilita **Cloud Storage** para usar Recursos con una cuenta.
+   **Cloud Firestore**.
 2. Copia `.env.example` a `.env` y rellena las llaves del SDK
    (Configuración del proyecto → Tus apps → SDK).
-3. Publica las reglas de Firestore y Storage con `firebase deploy --only firestore:rules,storage`.
-4. `npm run dev`. Si las llaves están presentes, aparece la pantalla de login;
+3. Para usar **Recursos** con una cuenta, activa el plan Blaze del proyecto y crea
+   el bucket desde **Storage → Comenzar** en Firebase Console. Copia el nombre
+   exacto del bucket (sin `gs://`) en `VITE_FIREBASE_STORAGE_BUCKET`.
+   [Configuración de Cloud Storage](https://firebase.google.com/docs/storage/web/start).
+4. Publica las reglas con `firebase deploy --only firestore:rules,storage --project TU_PROYECTO`.
+   Si solo configuraste Firestore, publica con `--only firestore:rules`.
+5. `npm run dev`. Si las llaves están presentes, aparece la pantalla de login;
    si no, la app corre en **modo local** sin cuenta.
+
+Si el navegador muestra un error CORS al subir un recurso, revisa el estado de
+la solicitud `OPTIONS` en la pestaña **Red**. Un `404` puede indicar que el
+bucket todavía no existe o que el nombre de `VITE_FIREBASE_STORAGE_BUCKET`
+es incorrecto. Reinicia Vite después de corregir el valor de `.env`.
 
 ### Dominios autorizados para Google
 

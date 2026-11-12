@@ -39,6 +39,36 @@ export function libraryLoadErrorMessage(error: unknown): string {
   }
 }
 
+export function resourceUploadErrorMessage(error: unknown): string {
+  const code = errorCode(error);
+  switch (code) {
+    case 'storage/no-default-bucket':
+    case 'storage/bucket-not-found':
+    case 'storage/project-not-found':
+      return 'Firebase Storage no encontró el bucket. Habilita Storage en Firebase Console y revisa VITE_FIREBASE_STORAGE_BUCKET.';
+    case 'storage/quota-exceeded':
+      return 'Firebase Storage rechazó la carga. Revisa el plan Blaze, la facturación y la cuota del proyecto.';
+    case 'storage/unauthenticated':
+    case 'unauthenticated':
+      return 'Tu sesión ya no es válida. Cierra sesión y vuelve a entrar.';
+    case 'storage/unauthorized':
+      return 'Firebase Storage rechazó la carga. Revisa que las reglas de Storage permitan guardar archivos en tu cuenta.';
+    case 'storage/unauthorized-app':
+      return 'Firebase Storage rechazó esta aplicación. Revisa la configuración de Firebase App Check.';
+    case 'permission-denied':
+      return 'Firestore rechazó el registro del recurso. Revisa las reglas de Firestore para tu cuenta.';
+    case 'storage/retry-limit-exceeded':
+    case 'storage/unknown':
+      return browserIsOffline()
+        ? 'No tienes conexión. Conéctate a internet para subir el recurso.'
+        : 'No se pudo completar la carga a Firebase Storage. Verifica en Firebase Console que Storage esté habilitado y que el bucket coincida con el configurado en la app.';
+    default:
+      return !code && error instanceof Error && error.message
+        ? error.message
+        : 'No se pudo guardar el recurso. Vuelve a intentarlo.';
+  }
+}
+
 /** Mensaje para fallos de fetch, que también pueden ser CORS o una caída del proveedor. */
 export function remoteServiceErrorMessage(service: string): string {
   return browserIsOffline()

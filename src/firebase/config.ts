@@ -37,3 +37,6 @@ if (isFirebaseConfigured) {
 export const auth = authInstance;
 export const db = dbInstance;
 export const storage = app && cfg.storageBucket ? getStorage(app) : null;
+
+// El navegador puede ocultar un rechazo del bucket como un fallo de red.
+if (storage) storage.maxUploadRetryTime = 30_000;
