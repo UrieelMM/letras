@@ -1,3 +1,16 @@
+const PRAISE_BACKGROUNDS = {
+  jubilantHands: { id: 'theme-palmas-de-jubilo', label: 'Palmas de Júbilo', colorA: '#ffbb78', colorB: '#35224f' },
+  joyfulTambourine: { id: 'theme-pandero-de-gozo', label: 'Pandero de Gozo', colorA: '#ffda85', colorB: '#48233c' },
+  victoryFlags: { id: 'theme-banderas-de-victoria', label: 'Banderas de Victoria', colorA: '#ff82ad', colorB: '#263466' },
+  leapingDeer: { id: 'theme-ciervos-en-libertad', label: 'Ciervos en Libertad', colorA: '#f9cf80', colorB: '#233c3b' },
+  partedSea: { id: 'theme-mar-abierto', label: 'Mar Abierto', colorA: '#78f6de', colorB: '#152d53' },
+  pentecostFire: { id: 'theme-llamas-de-pentecostes', label: 'Llamas de Pentecostés', colorA: '#ffba62', colorB: '#381832' },
+  paintedPsalm: { id: 'theme-salmo-en-colores', label: 'Salmo en Colores', colorA: '#fda0c8', colorB: '#352358' },
+  fallingWalls: { id: 'theme-murallas-que-caen', label: 'Murallas que Caen', colorA: '#f4bb8e', colorB: '#3a2a43' },
+  promisePath: { id: 'theme-camino-de-promesa', label: 'Camino de Promesa', colorA: '#ffd38a', colorB: '#25234f' },
+  gloryCrown: { id: 'theme-corona-de-gloria', label: 'Corona de Gloria', colorA: '#ffe294', colorB: '#342350' },
+} as const;
+
 export const KINETIC_BACKGROUNDS = {
   origamiWind: { id: 'theme-origami-viento', label: 'Origami al Viento', colorA: '#ffb892', colorB: '#192052' },
   citrusFizz: { id: 'theme-citricos-efervescentes', label: 'Cítricos Efervescentes', colorA: '#ffcf58', colorB: '#103d3a' },
@@ -19,6 +32,7 @@ export const KINETIC_BACKGROUNDS = {
   worshipIncense: { id: 'theme-incienso-de-adoracion', label: 'Incienso de Adoración', colorA: '#f2accc', colorB: '#271b39' },
   praiseEcho: { id: 'theme-eco-de-alabanza', label: 'Eco de Alabanza', colorA: '#80f5d9', colorB: '#132d39' },
   hopeCandles: { id: 'theme-velas-de-esperanza', label: 'Velas de Esperanza', colorA: '#ffbc72', colorB: '#2d2042' },
+  ...PRAISE_BACKGROUNDS,
 } as const;
 
 export type KineticBackgroundPreset = keyof typeof KINETIC_BACKGROUNDS;
@@ -28,4 +42,8 @@ export const KINETIC_THEME_IDS = new Set<string>(Object.values(KINETIC_BACKGROUN
 
 export function isKineticBackgroundPreset(value: string): value is KineticBackgroundPreset {
   return Object.prototype.hasOwnProperty.call(KINETIC_BACKGROUNDS, value);
+}
+
+export function isPraiseBackgroundPreset(value: string): value is keyof typeof PRAISE_BACKGROUNDS {
+  return Object.prototype.hasOwnProperty.call(PRAISE_BACKGROUNDS, value);
 }

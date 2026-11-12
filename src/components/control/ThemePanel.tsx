@@ -7,7 +7,13 @@ import { FONT_OPTIONS, loadFont } from '../../lib/fonts';
 import { getThemeTextAnimation } from '../../lib/textAnimation';
 import { REMOVED_BG_PRESETS, REMOVED_THEME_IDS } from '../../lib/removedThemes';
 import { REACT_BITS_PRESETS, REACT_BITS_THEME_IDS } from '../../lib/reactBitsThemes';
-import { isKineticBackgroundPreset, KINETIC_BACKGROUNDS, KINETIC_BACKGROUND_PRESETS, KINETIC_THEME_IDS } from '../../lib/kineticBackgrounds';
+import {
+  isKineticBackgroundPreset,
+  isPraiseBackgroundPreset,
+  KINETIC_BACKGROUNDS,
+  KINETIC_BACKGROUND_PRESETS,
+  KINETIC_THEME_IDS,
+} from '../../lib/kineticBackgrounds';
 import { saveThemeImageLocally } from '../../media/localMedia';
 import type {
   AnimatedBgPreset,
@@ -690,8 +696,13 @@ export function ThemePanel() {
                 });
               }}
             >
+              <optgroup label="Alabanza">
+                {KINETIC_BACKGROUND_PRESETS.filter(isPraiseBackgroundPreset).map((preset) => (
+                  <option key={preset} value={preset}>★ {KINETIC_BACKGROUNDS[preset].label}</option>
+                ))}
+              </optgroup>
               <optgroup label="Fondos cinéticos">
-                {KINETIC_BACKGROUND_PRESETS.map((preset) => (
+                {KINETIC_BACKGROUND_PRESETS.filter((preset) => !isPraiseBackgroundPreset(preset)).map((preset) => (
                   <option key={preset} value={preset}>★ {KINETIC_BACKGROUNDS[preset].label}</option>
                 ))}
               </optgroup>

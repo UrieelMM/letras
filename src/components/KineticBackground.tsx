@@ -6,6 +6,8 @@ import { gearWorkshop, magneticBlocks, popPrint } from './kinetic/studio';
 import { livingMap, movingPrisms, trainWindow } from './kinetic/worlds';
 import { lightMantle, livingGlass, praiseEcho, promisePages, worshipIncense } from './kinetic/worshipLight';
 import { glorySky, goldenWheat, graceRain, hopeCandles, hopeSunrise } from './kinetic/worshipNature';
+import { fallingWalls, leapingDeer, partedSea, pentecostFire, promisePath } from './kinetic/praiseStories';
+import { gloryCrown, joyfulTambourine, jubilantHands, paintedPsalm, victoryFlags } from './kinetic/praiseSymbols';
 
 const SCENES: Record<KineticBackgroundPreset, Scene> = {
   origamiWind,
@@ -28,6 +30,16 @@ const SCENES: Record<KineticBackgroundPreset, Scene> = {
   worshipIncense,
   praiseEcho,
   hopeCandles,
+  jubilantHands,
+  joyfulTambourine,
+  victoryFlags,
+  leapingDeer,
+  partedSea,
+  pentecostFire,
+  paintedPsalm,
+  fallingWalls,
+  promisePath,
+  gloryCrown,
 };
 
 const SCENE_HEIGHT = 540;
