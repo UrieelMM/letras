@@ -38,6 +38,7 @@ import SwirlBlend from './swirl-blend';
 import { ThreeBackground } from './ThreeBackground';
 import { KineticBackground } from './KineticBackground';
 import { isKineticBackgroundPreset } from '../lib/kineticBackgrounds';
+import { isRetiredPraiseBackground } from '../lib/removedThemes';
 import TwilightLines from './twilight-lines';
 import WarpTwister from './warp-twister';
 import { useLocalMediaUrl } from '../media/useLocalMediaUrl';
@@ -82,6 +83,9 @@ export function Background({ bg }: Props) {
         />
       ) : null;
     case 'animated':
+      if (isRetiredPraiseBackground(bg)) {
+        return <div className="absolute inset-0" style={{ backgroundColor: bg.colorB }} />;
+      }
       if (isKineticBackgroundPreset(bg.preset)) {
         return <KineticBackground preset={bg.preset} colorA={bg.colorA} colorB={bg.colorB} />;
       }

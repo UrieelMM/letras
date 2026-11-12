@@ -5,6 +5,7 @@ import { DEFAULT_THEMES, SAMPLE_SONGS } from '../data/seed';
 import type { DataRepo } from '../persistence/repo';
 import { createFirestoreRepo } from '../persistence/firestoreRepo';
 import { createLocalRepo } from '../persistence/localRepo';
+import { isRetiredPraiseBackground, RETIRED_PRAISE_THEME_IDS } from '../lib/removedThemes';
 
 // Repositorio "vacío" mientras no hay sesión (no persiste en ningún lado).
 const noopRepo: DataRepo = {
@@ -36,6 +37,50 @@ const REMOVED_THEME_IDS = new Set(['theme-olas3d', 'theme-nubes', 'theme-halo', 
 const REMOVED_SAMPLE_SONG_IDS = new Set(['song-gracia', 'song-grande']);
 const BUNDLED_SONG_IDS = new Set(SAMPLE_SONGS.map((song) => song.id));
 
+function normalizeTheme(theme: Theme): Theme {
+  const retiredId = RETIRED_PRAISE_THEME_IDS.has(theme.id);
+  const background = theme.background.kind === 'animated' && isRetiredPraiseBackground(theme.background)
+    ? { kind: 'solid' as const, color: theme.background.colorB }
+    : theme.background;
+  if (!retiredId && background === theme.background) return theme;
+  const fallback = DEFAULT_THEMES[0];
+  return {
+    ...theme,
+    id: retiredId ? fallback.id : theme.id,
+    name: retiredId ? fallback.name : theme.name,
+    background,
+  };
+}
+
+function normalizeThemes(themes: Theme[]): Theme[] {
+  return themes.filter((theme) => !RETIRED_PRAISE_THEME_IDS.has(theme.id)).map(normalizeTheme);
+}
+
+function normalizeSong(song: Song): Song {
+  const theme = song.theme && normalizeTheme(song.theme);
+  const themeId = song.themeId && RETIRED_PRAISE_THEME_IDS.has(song.themeId) ? undefined : song.themeId;
+  const background = isRetiredPraiseBackground(song.background) ? undefined : song.background;
+  const blocks = song.blocks.map((block) => {
+    const overrides = block.slideBackgrounds;
+    if (!overrides?.some((item) => isRetiredPraiseBackground(item.background))) return block;
+    return { ...block, slideBackgrounds: overrides.filter((item) => !isRetiredPraiseBackground(item.background)) };
+  });
+  if (theme === song.theme && themeId === song.themeId && background === song.background
+    && blocks.every((block, index) => block === song.blocks[index])) return song;
+  return { ...song, theme, themeId, background, blocks };
+}
+
+function normalizeSettings(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    defaultThemeId: RETIRED_PRAISE_THEME_IDS.has(settings.defaultThemeId)
+      ? DEFAULT_THEMES[0].id : settings.defaultThemeId,
+    bibleThemeId: settings.bibleThemeId && RETIRED_PRAISE_THEME_IDS.has(settings.bibleThemeId)
+      ? undefined : settings.bibleThemeId,
+    bibleTheme: settings.bibleTheme && normalizeTheme(settings.bibleTheme),
+  };
+}
+
 /**
  * El cancionero viaja dentro del JavaScript de la app. Firestore sólo agrega
  * canciones del usuario o reemplaza una letra de fábrica cuando fue editada.
@@ -47,7 +92,7 @@ function withBundledSongbook(storedSongs: Song[]): Song[] {
     // Versiones antiguas copiaban el cancionero completo a Firestore con
     // updatedAt=0. Se prefiere el bundle actual salvo que el usuario lo editara.
     if (BUNDLED_SONG_IDS.has(song.id) && song.updatedAt === 0) continue;
-    songsById.set(song.id, song);
+    songsById.set(song.id, normalizeSong(song));
   }
 
   return Array.from(songsById.values());
@@ -139,15 +184,16 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
 
       songs = withBundledSongbook(songs);
 
-      // Limpieza: elimina temas retirados (emojis pesados + efectos descartados).
+      // Limpieza: elimina temas de fábrica retirados y efectos descartados.
       const toRemove = themes.filter(
-        (t) => t.overlay?.preset === 'emojis' || REMOVED_THEME_IDS.has(t.id),
+        (t) => t.overlay?.preset === 'emojis' || REMOVED_THEME_IDS.has(t.id) || RETIRED_PRAISE_THEME_IDS.has(t.id),
       );
       if (toRemove.length) {
         const removeIds = new Set(toRemove.map((t) => t.id));
         themes = themes.filter((t) => !removeIds.has(t.id));
         await Promise.all(toRemove.map((t) => activeRepo.deleteTheme(t.id).catch(() => {})));
       }
+      themes = themes.map(normalizeTheme);
 
       // Asegura que los temas de fábrica (incluidos los nuevos) estén presentes.
       const missingThemes = DEFAULT_THEMES.filter((d) => !themes.some((t) => t.id === d.id));
@@ -168,6 +214,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
         settings = { defaultThemeId: themes[0].id, language: 'es' };
         await activeRepo.saveSettings(settings).catch(() => {});
       }
+      settings = normalizeSettings(settings);
 
       const defaultTheme = themes.find((t) => t.id === settings!.defaultThemeId) ?? themes[0];
 
@@ -199,7 +246,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
           if (generation !== initGeneration) return;
           set((st) => ({
             songs: snap.songs ? withBundledSongbook(snap.songs) : st.songs,
-            themes: snap.themes ?? st.themes,
+            themes: snap.themes ? normalizeThemes(snap.themes) : st.themes,
             setlists: snap.setlists ?? st.setlists,
           }));
         });
@@ -241,7 +288,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
     if (song?.theme) return song.theme;
     const { themes, settings } = get();
     const id = song?.themeId ?? settings.defaultThemeId;
-    return themes.find((t) => t.id === id) ?? themes[0];
+    return themes.find((t) => t.id === id) ?? themes[0] ?? DEFAULT_THEMES[0];
   },
 
   themeForPresentation: () => {
@@ -249,7 +296,7 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
     if (workspaceTab === 'bible') {
       if (settings.bibleTheme) return settings.bibleTheme;
       const id = settings.bibleThemeId ?? settings.defaultThemeId;
-      return themes.find((theme) => theme.id === id) ?? themes[0];
+      return themes.find((theme) => theme.id === id) ?? themes[0] ?? DEFAULT_THEMES[0];
     }
     const song = songs.find((item) => item.id === activeSongId) ?? null;
     return get().themeForSong(song);
@@ -383,20 +430,23 @@ export const createLibrarySlice: SliceCreator<LibrarySlice> = (set, get) => ({
 
   importData: async (data: Backup) => {
     if (data.songs) {
-      set({ songs: data.songs });
-      await Promise.all(data.songs.map((s) => repo.saveSong(s).catch(() => {})));
+      const songs = data.songs.map(normalizeSong);
+      set({ songs });
+      await Promise.all(songs.map((s) => repo.saveSong(s).catch(() => {})));
     }
     if (data.themes) {
-      set({ themes: data.themes });
-      await Promise.all(data.themes.map((t) => repo.saveTheme(t).catch(() => {})));
+      const themes = normalizeThemes(data.themes);
+      set({ themes: themes.length ? themes : DEFAULT_THEMES });
+      await Promise.all(themes.map((t) => repo.saveTheme(t).catch(() => {})));
     }
     if (data.setlists) {
       set({ setlists: data.setlists });
       await Promise.all(data.setlists.map((s) => repo.saveSetlist(s).catch(() => {})));
     }
     if (data.settings) {
-      set({ settings: data.settings });
-      await repo.saveSettings(data.settings).catch(() => {});
+      const settings = normalizeSettings(data.settings);
+      set({ settings });
+      await repo.saveSettings(settings).catch(() => {});
     }
   },
 });
