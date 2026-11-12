@@ -4,6 +4,8 @@ import { drawFrame, type Scene } from './kinetic/drawing';
 import { citrusFizz, fishSchool, origamiWind, springGarden } from './kinetic/nature';
 import { gearWorkshop, magneticBlocks, popPrint } from './kinetic/studio';
 import { livingMap, movingPrisms, trainWindow } from './kinetic/worlds';
+import { lightMantle, livingGlass, praiseEcho, promisePages, worshipIncense } from './kinetic/worshipLight';
+import { glorySky, goldenWheat, graceRain, hopeCandles, hopeSunrise } from './kinetic/worshipNature';
 
 const SCENES: Record<KineticBackgroundPreset, Scene> = {
   origamiWind,
@@ -16,6 +18,16 @@ const SCENES: Record<KineticBackgroundPreset, Scene> = {
   gearWorkshop,
   fishSchool,
   livingMap,
+  graceRain,
+  hopeSunrise,
+  lightMantle,
+  livingGlass,
+  goldenWheat,
+  promisePages,
+  glorySky,
+  worshipIncense,
+  praiseEcho,
+  hopeCandles,
 };
 
 const SCENE_HEIGHT = 540;

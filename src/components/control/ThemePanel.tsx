@@ -7,7 +7,7 @@ import { FONT_OPTIONS, loadFont } from '../../lib/fonts';
 import { getThemeTextAnimation } from '../../lib/textAnimation';
 import { REMOVED_BG_PRESETS, REMOVED_THEME_IDS } from '../../lib/removedThemes';
 import { REACT_BITS_PRESETS, REACT_BITS_THEME_IDS } from '../../lib/reactBitsThemes';
-import { isKineticBackgroundPreset, KINETIC_BACKGROUNDS, KINETIC_BACKGROUND_PRESETS } from '../../lib/kineticBackgrounds';
+import { isKineticBackgroundPreset, KINETIC_BACKGROUNDS, KINETIC_BACKGROUND_PRESETS, KINETIC_THEME_IDS } from '../../lib/kineticBackgrounds';
 import { saveThemeImageLocally } from '../../media/localMedia';
 import type {
   AnimatedBgPreset,
@@ -169,14 +169,15 @@ const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = ALL_ANIM_PRES
     !REMOVED_BG_PRESETS.has(preset.value),
 );
 
-function isReactBitsTheme(theme: Theme) {
+function isFavoriteTheme(theme: Theme) {
   return (
+    KINETIC_THEME_IDS.has(theme.id) ||
     REACT_BITS_THEME_IDS.has(theme.id) ||
     (theme.background.kind === 'animated' && REACT_BITS_PRESETS.has(theme.background.preset))
   );
 }
 
-function ReactBitsStar() {
+function FavoriteStar() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -190,11 +191,13 @@ function ReactBitsStar() {
 
 export function ThemePanel() {
   const [themeSearch, setThemeSearch] = useState('');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const [highlightedThemeIndex, setHighlightedThemeIndex] = useState(0);
   const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
   const [previewReplay, setPreviewReplay] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
+  const themeSearchRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const themes = useStore((s) => s.themes);
   const activeSongId = useStore((s) => s.activeSongId);
@@ -207,20 +210,21 @@ export function ThemePanel() {
   const restoreFactoryThemes = useStore((s) => s.restoreFactoryThemes);
   const themeForPresentation = useStore((s) => s.themeForPresentation);
   const visibleThemes = themes.filter((t) => !REMOVED_THEME_IDS.has(t.id));
+  const searchableThemes = favoritesOnly ? visibleThemes.filter(isFavoriteTheme) : visibleThemes;
   const normalizedThemeSearch = themeSearch
     .trim()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLocaleLowerCase('es');
   const matchingThemes = normalizedThemeSearch
-    ? visibleThemes.filter((t) =>
+    ? searchableThemes.filter((t) =>
         t.name
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .toLocaleLowerCase('es')
           .includes(normalizedThemeSearch),
       )
-    : visibleThemes;
+    : searchableThemes;
 
   const theme = themeForPresentation();
 
@@ -291,7 +295,7 @@ export function ThemePanel() {
       <div>
         <div className="mb-1.5 flex items-center justify-between">
           <span className="label !mb-0">
-            Tema ({normalizedThemeSearch ? `${matchingThemes.length} de ` : ''}{visibleThemes.length})
+            Tema ({normalizedThemeSearch ? `${matchingThemes.length} de ` : ''}{searchableThemes.length})
           </span>
           <button
             className="text-[11px] text-accent-soft hover:text-white"
@@ -301,10 +305,24 @@ export function ThemePanel() {
             ↺ Restaurar de fábrica
           </button>
         </div>
+        <button
+          type="button"
+          aria-pressed={favoritesOnly}
+          className={`btn-soft mb-2 !px-2 !py-1 !text-xs ${favoritesOnly ? '!bg-accent/20 !text-white' : ''}`}
+          onClick={() => {
+            setFavoritesOnly((enabled) => !enabled);
+            setHighlightedThemeIndex(0);
+            setThemeMenuOpen(true);
+            themeSearchRef.current?.focus();
+          }}
+        >
+          <FavoriteStar /> Solo favoritos
+        </button>
         <div className="relative">
           <div className="relative">
             <input
               type="search"
+              ref={themeSearchRef}
               className="input pr-9"
               value={themeSearch}
               placeholder={`Tema actual: ${theme.name}`}
@@ -393,10 +411,10 @@ export function ThemePanel() {
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="truncate">{t.name}</span>
-                      {isReactBitsTheme(t) && (
+                      {isFavoriteTheme(t) && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-200">
-                          <ReactBitsStar />
-                          Favorites
+                          <FavoriteStar />
+                          Favorito
                         </span>
                       )}
                     </span>
@@ -674,7 +692,7 @@ export function ThemePanel() {
             >
               <optgroup label="Fondos cinéticos">
                 {KINETIC_BACKGROUND_PRESETS.map((preset) => (
-                  <option key={preset} value={preset}>{KINETIC_BACKGROUNDS[preset].label}</option>
+                  <option key={preset} value={preset}>★ {KINETIC_BACKGROUNDS[preset].label}</option>
                 ))}
               </optgroup>
               <optgroup label="Otros fondos animados">
