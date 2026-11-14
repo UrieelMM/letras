@@ -38,6 +38,8 @@ import SwirlBlend from './swirl-blend';
 import { ThreeBackground } from './ThreeBackground';
 import { KineticBackground } from './KineticBackground';
 import { isKineticBackgroundPreset } from '../lib/kineticBackgrounds';
+import { isScenicBackgroundPreset, restoreJerichoBackground } from '../lib/scenicBackgrounds';
+import ScenicBackground from './scenes/ScenicBackground';
 import { isRetiredPraiseBackground } from '../lib/removedThemes';
 import TwilightLines from './twilight-lines';
 import WarpTwister from './warp-twister';
@@ -48,7 +50,8 @@ interface Props {
   bg: BackgroundConfig;
 }
 
-export function Background({ bg }: Props) {
+export function Background({ bg: original }: Props) {
+  const bg = restoreJerichoBackground(original);
   const mediaUrl = useLocalMediaUrl(bg.kind === 'image' || bg.kind === 'video' ? bg.url : undefined);
 
   switch (bg.kind) {
@@ -85,6 +88,9 @@ export function Background({ bg }: Props) {
     case 'animated':
       if (isRetiredPraiseBackground(bg)) {
         return <div className="absolute inset-0" style={{ backgroundColor: bg.colorB }} />;
+      }
+      if (isScenicBackgroundPreset(bg.preset)) {
+        return <ScenicBackground key={bg.preset} preset={bg.preset} colorA={bg.colorA} colorB={bg.colorB} />;
       }
       if (isKineticBackgroundPreset(bg.preset)) {
         return <KineticBackground preset={bg.preset} colorA={bg.colorA} colorB={bg.colorB} />;

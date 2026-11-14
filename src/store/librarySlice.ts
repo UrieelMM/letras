@@ -1,4 +1,4 @@
-import type { AppSettings, LiveState, Setlist, Song, Theme } from '../types';
+import type { AppSettings, BackgroundConfig, LiveState, Setlist, Song, Theme } from '../types';
 import type { Backup, LibrarySlice, SliceCreator } from './types';
 import { uid } from '../lib/id';
 import { DEFAULT_THEMES, SAMPLE_SONGS } from '../data/seed';
@@ -6,6 +6,7 @@ import type { DataRepo } from '../persistence/repo';
 import { createFirestoreRepo } from '../persistence/firestoreRepo';
 import { createLocalRepo } from '../persistence/localRepo';
 import { isRetiredPraiseBackground, RETIRED_PRAISE_THEME_IDS } from '../lib/removedThemes';
+import { LEGACY_JERICHO_THEME_ID, restoreJerichoBackground, SCENIC_BACKGROUNDS } from '../lib/scenicBackgrounds';
 
 // Repositorio "vacío" mientras no hay sesión (no persiste en ningún lado).
 const noopRepo: DataRepo = {
@@ -38,18 +39,30 @@ const REMOVED_SAMPLE_SONG_IDS = new Set(['song-gracia', 'song-grande']);
 const BUNDLED_SONG_IDS = new Set(SAMPLE_SONGS.map((song) => song.id));
 
 function normalizeTheme(theme: Theme): Theme {
+  const id = normalizeThemeId(theme.id);
   const retiredId = RETIRED_PRAISE_THEME_IDS.has(theme.id);
-  const background = theme.background.kind === 'animated' && isRetiredPraiseBackground(theme.background)
-    ? { kind: 'solid' as const, color: theme.background.colorB }
-    : theme.background;
+  const restored = restoreJerichoBackground(theme.background, id);
+  const background = restored.kind === 'animated' && isRetiredPraiseBackground(restored)
+    ? { kind: 'solid' as const, color: restored.colorB }
+    : restored;
   if (!retiredId && background === theme.background) return theme;
   const fallback = DEFAULT_THEMES[0];
   return {
     ...theme,
-    id: retiredId ? fallback.id : theme.id,
-    name: retiredId ? fallback.name : theme.name,
+    id: id ?? fallback.id,
+    name: theme.id === LEGACY_JERICHO_THEME_ID ? SCENIC_BACKGROUNDS.jerichoCollapse.label : retiredId ? fallback.name : theme.name,
     background,
   };
+}
+
+function normalizeThemeId(id?: string) {
+  if (id === LEGACY_JERICHO_THEME_ID) return SCENIC_BACKGROUNDS.jerichoCollapse.id;
+  return id && !RETIRED_PRAISE_THEME_IDS.has(id) ? id : undefined;
+}
+
+function normalizeSlideBackground(background?: BackgroundConfig) {
+  const restored = background && restoreJerichoBackground(background);
+  return isRetiredPraiseBackground(restored) ? undefined : restored;
 }
 
 function normalizeThemes(themes: Theme[]): Theme[] {
@@ -58,12 +71,17 @@ function normalizeThemes(themes: Theme[]): Theme[] {
 
 function normalizeSong(song: Song): Song {
   const theme = song.theme && normalizeTheme(song.theme);
-  const themeId = song.themeId && RETIRED_PRAISE_THEME_IDS.has(song.themeId) ? undefined : song.themeId;
-  const background = isRetiredPraiseBackground(song.background) ? undefined : song.background;
+  const themeId = normalizeThemeId(song.themeId);
+  const background = normalizeSlideBackground(song.background);
   const blocks = song.blocks.map((block) => {
     const overrides = block.slideBackgrounds;
-    if (!overrides?.some((item) => isRetiredPraiseBackground(item.background))) return block;
-    return { ...block, slideBackgrounds: overrides.filter((item) => !isRetiredPraiseBackground(item.background)) };
+    if (!overrides) return block;
+    const normalized = overrides.flatMap((item) => {
+      const bg = normalizeSlideBackground(item.background);
+      return bg ? [bg === item.background ? item : { ...item, background: bg }] : [];
+    });
+    if (normalized.length === overrides.length && normalized.every((item, index) => item === overrides[index])) return block;
+    return { ...block, slideBackgrounds: normalized };
   });
   if (theme === song.theme && themeId === song.themeId && background === song.background
     && blocks.every((block, index) => block === song.blocks[index])) return song;
@@ -73,10 +91,8 @@ function normalizeSong(song: Song): Song {
 function normalizeSettings(settings: AppSettings): AppSettings {
   return {
     ...settings,
-    defaultThemeId: RETIRED_PRAISE_THEME_IDS.has(settings.defaultThemeId)
-      ? DEFAULT_THEMES[0].id : settings.defaultThemeId,
-    bibleThemeId: settings.bibleThemeId && RETIRED_PRAISE_THEME_IDS.has(settings.bibleThemeId)
-      ? undefined : settings.bibleThemeId,
+    defaultThemeId: normalizeThemeId(settings.defaultThemeId) ?? DEFAULT_THEMES[0].id,
+    bibleThemeId: normalizeThemeId(settings.bibleThemeId),
     bibleTheme: settings.bibleTheme && normalizeTheme(settings.bibleTheme),
   };
 }

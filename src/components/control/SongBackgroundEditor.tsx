@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { buildSlides, BLOCK_LABELS } from '../../lib/slides';
 import { REMOVED_THEME_IDS } from '../../lib/removedThemes';
 import { isKineticBackgroundPreset, isPraiseBackgroundPreset, KINETIC_THEME_IDS } from '../../lib/kineticBackgrounds';
+import { isScenicBackgroundPreset } from '../../lib/scenicBackgrounds';
 import { RESOURCE_CATEGORIES, resourceBackground } from '../../resources/model';
 import { useResourceLibrary } from '../../resources/ResourceLibrary';
 import { useStore } from '../../store/useStore';
@@ -95,6 +96,10 @@ function isPraiseTheme(theme: Theme) {
   return theme.background.kind === 'animated' && isPraiseBackgroundPreset(theme.background.preset);
 }
 
+function isScenicTheme(theme: Theme) {
+  return theme.background.kind === 'animated' && isScenicBackgroundPreset(theme.background.preset);
+}
+
 function BackgroundOptions({ background, inherited, resetLabel, onChange }: {
   background?: BackgroundConfig;
   inherited: BackgroundConfig;
@@ -146,6 +151,11 @@ function BackgroundOptions({ background, inherited, resetLabel, onChange }: {
             if (chosen) onChange(chosen.background);
           }}>
             <option value="" disabled>Elige un tema</option>
+            <optgroup label="Escenarios 3D">
+              {themes.filter(isScenicTheme).map((theme) => (
+                <option key={theme.id} value={theme.id}>{theme.name}</option>
+              ))}
+            </optgroup>
             <optgroup label="Alabanza">
               {themes.filter(isPraiseTheme).map((theme) => (
                 <option key={theme.id} value={theme.id}>{KINETIC_THEME_IDS.has(theme.id) ? '★ ' : ''}{theme.name}</option>
@@ -157,7 +167,7 @@ function BackgroundOptions({ background, inherited, resetLabel, onChange }: {
               ))}
             </optgroup>
             <optgroup label="Otros temas">
-              {themes.filter((theme) => !isKineticTheme(theme)).map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+              {themes.filter((theme) => !isKineticTheme(theme) && !isScenicTheme(theme)).map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
             </optgroup>
           </select>
         </label>

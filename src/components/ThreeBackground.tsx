@@ -7,13 +7,14 @@ import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass
 import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
 import type { AnimatedBgPreset } from '../types';
 import type { KineticBackgroundPreset } from '../lib/kineticBackgrounds';
+import type { ScenicBackgroundPreset } from '../lib/scenicBackgrounds';
 
 // Renderizamos colores tal cual el hex (sin conversión a espacio lineal),
 // para que coincidan con la vista CSS y se vean vivos.
 THREE.ColorManagement.enabled = false;
 
 interface Props {
-  preset: Exclude<AnimatedBgPreset, KineticBackgroundPreset>;
+  preset: Exclude<AnimatedBgPreset, KineticBackgroundPreset | ScenicBackgroundPreset>;
   colorA: string;
   colorB: string;
   // Efectos de postprocesado (opcionales)

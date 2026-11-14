@@ -14,6 +14,7 @@ import {
   KINETIC_BACKGROUND_PRESETS,
   KINETIC_THEME_IDS,
 } from '../../lib/kineticBackgrounds';
+import { isScenicBackgroundPreset, SCENIC_BACKGROUNDS, SCENIC_PRESETS, SCENIC_THEME_IDS } from '../../lib/scenicBackgrounds';
 import { saveThemeImageLocally } from '../../media/localMedia';
 import type {
   AnimatedBgPreset,
@@ -178,6 +179,7 @@ const ANIM_PRESETS: { value: AnimatedBgPreset; label: string }[] = ALL_ANIM_PRES
 function isFavoriteTheme(theme: Theme) {
   return (
     KINETIC_THEME_IDS.has(theme.id) ||
+    SCENIC_THEME_IDS.has(theme.id) ||
     REACT_BITS_THEME_IDS.has(theme.id) ||
     (theme.background.kind === 'animated' && REACT_BITS_PRESETS.has(theme.background.preset))
   );
@@ -686,7 +688,8 @@ export function ThemePanel() {
               value={theme.background.preset}
               onChange={(e) => {
                 const preset = e.target.value as AnimatedBgPreset;
-                const palette = isKineticBackgroundPreset(preset) ? KINETIC_BACKGROUNDS[preset] : undefined;
+                const palette = isScenicBackgroundPreset(preset) ? SCENIC_BACKGROUNDS[preset]
+                  : isKineticBackgroundPreset(preset) ? KINETIC_BACKGROUNDS[preset] : undefined;
                 const previous = theme.background as Extract<BackgroundConfig, { kind: 'animated' }>;
                 updateBg({
                   ...previous,
@@ -696,6 +699,11 @@ export function ThemePanel() {
                 });
               }}
             >
+              <optgroup label="Escenarios 3D">
+                {SCENIC_PRESETS.map((preset) => (
+                  <option key={preset} value={preset}>★ {SCENIC_BACKGROUNDS[preset].label}</option>
+                ))}
+              </optgroup>
               <optgroup label="Alabanza">
                 {KINETIC_BACKGROUND_PRESETS.filter(isPraiseBackgroundPreset).map((preset) => (
                   <option key={preset} value={preset}>★ {KINETIC_BACKGROUNDS[preset].label}</option>

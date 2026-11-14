@@ -13,6 +13,7 @@ export interface FontOption {
 
 export const FONT_OPTIONS: FontOption[] = [
   { family: 'Inter', label: 'Inter', google: 'Inter:wght@300;400;500;600;700;800;900', category: 'sans' },
+  { family: 'Manrope', label: 'Manrope', google: 'Manrope:wght@700;800', category: 'sans' },
   { family: 'Poppins', label: 'Poppins', google: 'Poppins:wght@300;400;500;600;700;800;900', category: 'sans' },
   { family: 'Montserrat', label: 'Montserrat', google: 'Montserrat:wght@300;400;500;600;700;800;900', category: 'sans' },
   { family: 'Nunito', label: 'Nunito', google: 'Nunito:wght@300;400;600;700;800;900', category: 'sans' },

@@ -1,6 +1,7 @@
 import type { Song, Theme } from '../types';
 import { REMOVED_THEME_IDS } from '../lib/removedThemes';
 import { KINETIC_BACKGROUNDS, KINETIC_BACKGROUND_PRESETS } from '../lib/kineticBackgrounds';
+import { SCENIC_BACKGROUNDS, SCENIC_PRESETS } from '../lib/scenicBackgrounds';
 import { SONGBOOK_SONGS } from './songbook.generated';
 
 type AnimatedThemePreset = Extract<Theme['background'], { kind: 'animated' }>['preset'];
@@ -2380,6 +2381,17 @@ const ALL_THEMES: Theme[] = [
     overlay: { preset: 'stars', color: '#ffb9f1', intensity: 0.75 },
     contrast: { overlayColor: '#000000', overlayOpacity: 0.2, blurPx: 0 },
   },
+  ...SCENIC_PRESETS.map((preset): Theme => {
+    const { id, label, colorA, colorB, font, weight, contrast } = SCENIC_BACKGROUNDS[preset];
+    return {
+      ...reactBitsTheme(id, label, preset, colorA, colorB),
+      font: { family: font, weight, sizeVw: 5.25, lineHeight: 1.17, letterSpacing: 0 },
+      maxLinesPerSlide: 3,
+      textReveal: 'linesUp',
+      textMotion: 'none',
+      contrast: { overlayColor: '#080913', overlayOpacity: contrast, blurPx: 0 },
+    };
+  }),
   ...KINETIC_BACKGROUND_PRESETS.map((preset): Theme => {
     const { id, label, colorA, colorB } = KINETIC_BACKGROUNDS[preset];
     return {
