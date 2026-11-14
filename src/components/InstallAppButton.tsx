@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { toast } from '../store/toastStore';
 
 type InstallOutcome = 'accepted' | 'dismissed';
@@ -8,57 +8,59 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: InstallOutcome; platform: string }>;
 }
 
-type AvailabilityListener = (available: boolean) => void;
-
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
-let installed =
-  typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
-const listeners = new Set<AvailabilityListener>();
-
-function canInstall(): boolean {
-  return Boolean(deferredPrompt) && !installed;
-}
+const standalone = window.matchMedia('(display-mode: standalone)');
+let installed = standalone.matches;
+const listeners = new Set<() => void>();
 
 function notifyAvailability(): void {
-  const available = canInstall();
-  listeners.forEach((listener) => listener(available));
+  listeners.forEach((listener) => listener());
 }
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (event) => {
-    event.preventDefault();
-    deferredPrompt = event as BeforeInstallPromptEvent;
-    notifyAvailability();
-  });
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredPrompt = event as BeforeInstallPromptEvent;
+  notifyAvailability();
+});
 
-  window.addEventListener('appinstalled', () => {
-    installed = true;
-    deferredPrompt = null;
-    notifyAvailability();
-  });
+window.addEventListener('appinstalled', () => {
+  installed = true;
+  deferredPrompt = null;
+  notifyAvailability();
+});
 
-  window.matchMedia('(display-mode: standalone)').addEventListener('change', (event) => {
-    installed = event.matches;
-    if (installed) deferredPrompt = null;
-    notifyAvailability();
-  });
-}
+standalone.addEventListener('change', (event) => {
+  installed = event.matches;
+  if (installed) deferredPrompt = null;
+  notifyAvailability();
+});
 
-function subscribeAvailability(listener: AvailabilityListener): () => void {
+function subscribeAvailability(listener: () => void): () => void {
   listeners.add(listener);
-  listener(canInstall());
   return () => listeners.delete(listener);
 }
 
-async function requestInstall(): Promise<InstallOutcome | null> {
-  const prompt = deferredPrompt;
-  if (!prompt) return null;
+function getInstallStatus() {
+  if (installed) return 'installed';
+  return deferredPrompt ? 'available' : 'manual';
+}
 
-  await prompt.prompt();
-  const choice = await prompt.userChoice;
+export function useInstallStatus() {
+  return useSyncExternalStore(subscribeAvailability, getInstallStatus);
+}
+
+export async function requestInstall(): Promise<InstallOutcome | null> {
+  const prompt = deferredPrompt;
+  if (!prompt || installed) return null;
   deferredPrompt = null;
-  notifyAvailability();
-  return choice.outcome;
+  try {
+    await prompt.prompt();
+    const choice = await prompt.userChoice;
+    if (choice.outcome === 'accepted') installed = true;
+    return choice.outcome;
+  } finally {
+    notifyAvailability();
+  }
 }
 
 interface Props {
@@ -67,12 +69,10 @@ interface Props {
 }
 
 export function InstallAppButton({ className = 'btn-soft', label = 'Instalar app' }: Props) {
-  const [available, setAvailable] = useState(canInstall);
+  const status = useInstallStatus();
   const [installing, setInstalling] = useState(false);
 
-  useEffect(() => subscribeAvailability(setAvailable), []);
-
-  if (!available) return null;
+  if (status === 'installed' || (status !== 'available' && !installing)) return null;
 
   async function install() {
     setInstalling(true);
@@ -96,15 +96,16 @@ export function InstallAppButton({ className = 'btn-soft', label = 'Instalar app
       onClick={() => void install()}
       title="Instalar Wordship Screen en esta computadora"
     >
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="h-4 w-4 fill-none stroke-current stroke-2"
-      >
-        <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
-        <path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
-      </svg>
+      <InstallIcon />
       {installing ? 'Abriendo…' : label}
     </button>
+  );
+}
+
+export function InstallIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={`${className} shrink-0 fill-none stroke-current stroke-2`} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+    </svg>
   );
 }

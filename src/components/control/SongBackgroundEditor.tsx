@@ -194,7 +194,7 @@ function BackgroundOptions({ background, inherited, resetLabel, onChange }: {
               </select>
             </label>
           )}
-          {upload && <ResourceUploadForm category="general" onCancel={() => setUpload(false)} onUploaded={(item) => {
+          {upload && <ResourceUploadForm category="general" onCancel={() => setUpload(false)} onUploaded={([item]) => {
             setUpload(false);
             onChange(resourceBackground(item));
           }} />}

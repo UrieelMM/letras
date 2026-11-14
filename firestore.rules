@@ -6,5 +6,29 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    function folderIsOpen(folderId) {
+      return folderId == null || (
+        folderId is string &&
+        get(/databases/$(database)/documents/resourceFolders/$(folderId)).data.get('deleting', false) == false
+      );
+    }
+
+    match /resources/{resourceId} {
+      allow read, delete: if request.auth != null;
+      allow create: if request.auth != null &&
+        folderIsOpen(request.resource.data.get('folderId', null));
+      allow update: if request.auth != null &&
+        folderIsOpen(resource.data.get('folderId', null)) &&
+        folderIsOpen(request.resource.data.get('folderId', null));
+    }
+
+    match /resourceFolders/{folderId} {
+      allow read, create, delete: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.get('deleting', false) == false ||
+        request.resource.data.get('deleting', false) == true
+      );
+    }
   }
 }

@@ -345,6 +345,12 @@ body {
 .landing-cta-button { min-height: 54px; padding: 0 1.5rem; color: #17121f; background: #fff; }
 .landing-cta-install { min-height: 54px; display: inline-flex; align-items: center; justify-content: center; gap: .55rem; padding: 0 1.5rem; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: white; background: rgba(255,255,255,.08); font-weight: 800; transition: transform 180ms ease, background 180ms ease; }
 .landing-cta-install:hover { transform: translateY(-2px); background: rgba(255,255,255,.14); }
+.landing-install-card {
+  border: 1px solid var(--landing-border);
+  color: var(--landing-text);
+  background: var(--landing-surface);
+  box-shadow: 0 12px 48px rgba(35, 25, 46, .19), var(--landing-card-shadow);
+}
 .landing-footer { color: var(--landing-text); background: var(--landing-bg); border-top: 1px solid var(--landing-border); }
 
 @keyframes landing-gradient-drift {

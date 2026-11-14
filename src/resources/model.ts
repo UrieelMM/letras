@@ -10,11 +10,21 @@ export const RESOURCE_CATEGORIES = [
 export type ResourceCategory = (typeof RESOURCE_CATEGORIES)[number]['id'];
 export type ResourceFilter = 'all' | ResourceCategory;
 
+export interface ResourceFolder {
+  id: string;
+  name: string;
+  createdAt: number;
+  deleting?: boolean;
+}
+
+export const RESOURCE_NAME_LIMIT = 120;
+
 export interface MediaResource {
   id: string;
   title: string;
   kind: 'image' | 'video';
   category: ResourceCategory;
+  folderId?: string | null;
   mimeType: string;
   size: number;
   url: string;
@@ -23,6 +33,16 @@ export interface MediaResource {
 }
 
 export const RESOURCE_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm';
+export const RESOURCE_SIZE_LIMITS = { image: 25, video: 250 } as const;
+export const RESOURCE_KIND_LABELS = { image: 'Imagen', video: 'Video' } as const;
+
+const sizeFormat = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 1 });
+
+export function formatResourceSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${sizeFormat.format(bytes / 1024)} KB`;
+  return `${sizeFormat.format(bytes / (1024 * 1024))} MB`;
+}
 
 export function validateResource(file: File) {
   const mimeType = file.type;
@@ -30,7 +50,7 @@ export function validateResource(file: File) {
     throw new Error('Selecciona una imagen JPG, PNG, WebP, GIF o AVIF, o un video MP4 o WebM.');
   }
   const kind = mimeType.startsWith('video/') ? 'video' : 'image';
-  const limit = kind === 'video' ? 250 : 25;
+  const limit = RESOURCE_SIZE_LIMITS[kind];
   if (!file.size) throw new Error('El archivo está vacío.');
   if (file.size > limit * 1024 * 1024) throw new Error(`El tamaño máximo es de ${limit} MB.`);
   return { kind, mimeType } as const;

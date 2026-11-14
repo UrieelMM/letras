@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  busy?: boolean;
+  error?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -19,22 +22,32 @@ export function ConfirmModal({
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
   destructive = false,
+  busy = false,
+  error,
   onConfirm,
   onCancel,
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     if (!open) return;
+    const previousFocus = document.activeElement;
     cancelRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel();
+    return () => {
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onCancel]);
+  }, [open]);
 
-  return (
+  useEffect(() => {
+    if (open && busy) dialogRef.current?.focus();
+    if (open && error && !busy) confirmRef.current?.focus();
+  }, [open, busy, error]);
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -43,15 +56,27 @@ export function ConfirmModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) onCancel();
+            if (!busy && event.target === event.currentTarget) onCancel();
           }}
         >
           <motion.div
             role="alertdialog"
+            ref={dialogRef}
+            tabIndex={-1}
             aria-modal="true"
-            aria-labelledby="confirm-modal-title"
-            aria-describedby="confirm-modal-description"
-            className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-ink-800 shadow-2xl"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
+            aria-busy={busy}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === 'Escape' && !busy) onCancel();
+              if (event.key !== 'Tab') return;
+              event.preventDefault();
+              if (busy) return;
+              const useCancel = event.target === confirmRef.current || (event.shiftKey && event.target === dialogRef.current);
+              (useCancel ? cancelRef : confirmRef).current?.focus();
+            }}
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-ink-800 shadow-2xl outline-none"
             initial={{ opacity: 0, y: 18, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -68,29 +93,33 @@ export function ConfirmModal({
                 </svg>
               </div>
               <div className="min-w-0">
-                <h2 id="confirm-modal-title" className="text-base font-bold text-white">
+                <h2 id={titleId} className="break-words text-base font-bold text-white">
                   {title}
                 </h2>
-                <p id="confirm-modal-description" className="mt-1.5 text-sm leading-6 text-white/55">
+                <p id={descriptionId} className="mt-1.5 break-words text-sm leading-6 text-white/65">
                   {description}
                 </p>
+                {error && <p role="alert" className="mt-2 text-sm text-red-300">{error}</p>}
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t border-white/10 bg-black/10 px-5 py-4">
-              <button ref={cancelRef} type="button" className="btn-soft" onClick={onCancel}>
+              <button ref={cancelRef} type="button" className="btn-soft" onClick={onCancel} disabled={busy}>
                 {cancelLabel}
               </button>
               <button
                 type="button"
+                ref={confirmRef}
                 className={destructive ? 'btn !bg-red-500 text-white hover:!bg-red-400' : 'btn-accent'}
                 onClick={onConfirm}
+                disabled={busy}
               >
-                {confirmLabel}
+                {busy ? 'Guardando…' : confirmLabel}
               </button>
             </div>
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

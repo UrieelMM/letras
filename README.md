@@ -417,7 +417,9 @@ Stack de Firebase usado:
 - **IndexedDB local** para logos e imágenes de fondo, de modo que sigan
   disponibles aunque Firebase o Internet no respondan.
 - **Cloud Storage** para las imágenes y los videos de **Recursos**. Los archivos
-  y sus fichas de Firestore están bajo `users/{uid}/resources/{resourceId}`.
+  y sus fichas de Firestore están bajo `resources/{resourceId}`. Las carpetas
+  se guardan en `resourceFolders/{folderId}`. Cualquier cuenta autenticada puede
+  subir, consultar, editar y eliminar contenido de la biblioteca compartida.
   En modo sin cuenta, los archivos se guardan en IndexedDB.
 
 ### Configuración

@@ -52,7 +52,9 @@ export default defineConfig({
         skipWaiting: true,
         runtimeCaching: [
           {
-            urlPattern: ({ request }) => request.destination === 'image',
+            urlPattern: ({ request, url }) => request.destination === 'image' && !(
+              url.hostname === 'firebasestorage.googleapis.com' && url.pathname.includes('/o/resources%2F')
+            ),
             handler: 'CacheFirst',
             options: {
               cacheName: 'wordship-user-images',

@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-mot
 import { Link } from 'react-router-dom';
 import MetallicSwirl from '../metallic-swirl';
 import { InstallAppButton } from '../InstallAppButton';
+import { DesktopInstall, isDesktopInstallDevice } from './DesktopInstall';
 import { useAuthStore } from '../../store/authStore';
 import brandMark from '../../assets/3.png';
 
@@ -103,6 +104,7 @@ export function LandingPage() {
   const { user, localMode } = useAuthStore();
   const hasSession = Boolean(user) || localMode;
   const appPath = hasSession ? '/app' : '/login';
+  const desktopInstall = isDesktopInstallDevice();
 
   useEffect(() => {
     document.title = 'Wordship Screen — Proyección para iglesias';
@@ -386,7 +388,7 @@ export function LandingPage() {
                   {hasSession ? 'Ir a mi espacio' : 'Crear mi espacio'}
                   <span className="transition-transform group-hover:translate-x-1"><ArrowIcon /></span>
                 </Link>
-                <InstallAppButton className="landing-cta-install w-full sm:w-auto" label="Instalar aplicación" />
+                {!desktopInstall && <InstallAppButton className="landing-cta-install w-full sm:w-auto" label="Instalar aplicación" />}
               </div>
             </div>
           </motion.div>
@@ -407,6 +409,7 @@ export function LandingPage() {
           </Link>
         </div>
       </footer>
+      {desktopInstall && <DesktopInstall />}
     </div>
   );
 }
