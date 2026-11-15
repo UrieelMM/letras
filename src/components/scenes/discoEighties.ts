@@ -17,13 +17,17 @@ const discoBallFragment = `
     vec3 facet=vec3(cos(angle)*sin(latitude),cos(latitude),sin(angle)*sin(latitude));
     vec3 normal=normalize(vNormal+facet*.088);
     vec3 reflection=reflect(-normalize(vView),normal);
-    float shine=pow(max(0.,dot(reflection,normalize(vec3(.71,.43,.55)))),19.);
-    float blue=pow(max(0.,dot(reflection,normalize(vec3(-.76,-.44,.30)))),10.);
+    vec3 key=normalize(vec3(.53+.41*sin(uTime*1.65),.43,.57));
+    vec3 fill=normalize(vec3(-.61,-.34+.38*sin(uTime*1.32),.41));
+    float shine=pow(max(0.,dot(reflection,key)),17.);
+    float blue=pow(max(0.,dot(reflection,fill)),11.);
+    float glint=pow(max(0.,dot(reflection,normalize(vec3(.31,-.65,.51)))),46.);
     float rim=pow(1.-max(0.,dot(normal,normalize(vView))),2.8);
     float chroma=.45+.52*sin(tile.x*.93+tile.y*.51+uTime*.68);
     vec3 color=mix(vec3(.063,.10,.22),uAccent*.59,chroma);
     color*=.43+h*.81;
     color+=vec3(1.,.94,.89)*shine*(.58+h*.65)+vec3(.32,.74,1.)*blue*.88;
+    color+=vec3(1.,.70,.34)*glint;
     color+=mix(uAccent,vec3(.43,.66,1.),h)*rim*.26;
     float seams=smoothstep(.045,.14,min(min(cell.x,1.-cell.x),min(cell.y,1.-cell.y)));
     gl_FragColor=vec4(color*(.25+.75*seams),1.);
@@ -37,6 +41,8 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
   const violet=base.clone().lerp(color('#623b83'),.51);
   const cyan=color('#53def4');
   const gold=color('#ffbe75');
+  const lavender=color('#9670ff');
+  const mint=color('#5dffd0');
   const ink=color('#14132a');
   const coolLight=color('#aab9de');
   scene.background=dark;
@@ -52,6 +58,19 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
   const neon:Instance[]=[];
   const acoustic:Instance[]=[];
   const box=new T.BoxGeometry();
+  const clock={value:0};
+  const fixtures = [
+    { origin: new T.Vector3(-13.3, 9.6, -22), tint: accent, phase: .2, reach: 11 },
+    { origin: new T.Vector3(13.3, 9.6, -22), tint: cyan, phase: 2.8, reach: 11 },
+    { origin: new T.Vector3(-10.6, 11.8, -11), tint: gold, phase: 4.3, reach: 9 },
+    { origin: new T.Vector3(10.6, 11.8, -11), tint: lavender, phase: 1.6, reach: 9 },
+    { origin: new T.Vector3(-8.8, 11.8, -2), tint: mint, phase: 3.5, reach: 12 },
+    { origin: new T.Vector3(8.8, 11.8, -2), tint: accent, phase: 5.7, reach: 12 },
+    { origin: new T.Vector3(-5.8, 9.4, -28), tint: lavender, phase: .8, reach: 8 },
+    { origin: new T.Vector3(5.8, 9.4, -28), tint: cyan, phase: 3.9, reach: 8 },
+  ];
+  const spotTargets = fixtures.map(() => new T.Vector2());
+  const spotColors = fixtures.map(({ tint }) => tint);
   function add(list:Instance[],x:number,y:number,z:number,sx:number,sy:number,sz:number,tint:T.Color,
     rx=0,ry=0,rz=0) {
     list.push({x,y,z,sx,sy,sz,color:tint,rx,ry,rz});
@@ -88,6 +107,10 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
       add(structure,x,12.32,z,.64,.46,.72,ink);
       add(neon,x,12.04,z,.26,.079,.30,i%2===0 ? gold : cyan);
     }
+  }
+  for (const { origin, tint } of fixtures) {
+    add(structure,origin.x,origin.y+.43,origin.z,.82,.87,.72,ink);
+    add(neon,origin.x,origin.y+.05,origin.z,.48,.14,.41,tint);
   }
   for(let line=0;line<8;line++){
     const r=3.1+line*.99;
@@ -128,18 +151,35 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
     add(neon,(i-6.5)*.124,3.54,-26.96,.071,.067,.15,i%3===0 ? gold : accent);
   }
   instanced(scene,box,new T.MeshStandardMaterial({roughness:.72}),structure);
-  instanced(scene,box,new T.MeshBasicMaterial(),neon);
+  const neonMaterial=new T.MeshBasicMaterial();
+  neonMaterial.onBeforeCompile=(shader)=>{
+    shader.uniforms.uTime=clock;
+    shader.vertexShader='varying vec3 vFixture;\n'+shader.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\nvFixture=instanceMatrix[3].xyz;');
+    shader.fragmentShader='uniform float uTime; varying vec3 vFixture;\n'+shader.fragmentShader.replace('#include <color_fragment>',`
+      #include <color_fragment>
+      float wave=.5+.5*sin(uTime*3.2+vFixture.z*.34+vFixture.x*.19);
+      float chase=smoothstep(.24,.85,wave);
+      diffuseColor.rgb *= .51+.62*chase;
+    `);
+  };
+  instanced(scene,box,neonMaterial,neon);
   instanced(scene,new T.CylinderGeometry(.5,.5,1,24),new T.MeshStandardMaterial({roughness:.63}),acoustic);
 
-  const floorTime={value:0};
   const floor=new T.Mesh(new T.PlaneGeometry(45,64).rotateX(-Math.PI/2).translate(0,0,-11),new T.ShaderMaterial({
-    uniforms:{uTime:floorTime,uAccent:{value:accent},uBase:{value:base}},
+    defines:{SPOTS:fixtures.length},
+    uniforms:{
+      uTime:clock,uAccent:{value:accent},uBase:{value:base},
+      uSpotTargets:{value:spotTargets},uSpotColors:{value:spotColors},
+    },
     vertexShader:`varying vec3 vFloor;
       void main(){vFloor=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
     fragmentShader:`
       varying vec3 vFloor;
       uniform vec3 uAccent,uBase;
       uniform float uTime;
+      uniform vec2 uSpotTargets[SPOTS];
+      uniform vec3 uSpotColors[SPOTS];
       ${noiseGLSL}
       void main(){
         vec2 p=vFloor.xz*.73;
@@ -147,13 +187,19 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
         vec2 f=fract(p);
         float edge=smoothstep(.032,.082,min(min(f.x,1.-f.x),min(f.y,1.-f.y)));
         float checker=mod(tile.x+tile.y,2.);
-        float wash=.5+.5*sin(tile.y*.77+tile.x*.29-uTime*1.24);
-        float pulse=.5+.5*sin(uTime*1.47+hash(tile+22.)*7.2);
+        float wash=.5+.5*sin(tile.y*.77+tile.x*.29-uTime*2.6);
+        float pulse=.5+.5*sin(uTime*2.6+hash(tile+22.)*7.2);
         float center=1.-smoothstep(5.3,8.9,abs(tile.x+.5));
-        vec3 tint=mix(vec3(.27,.62,.98),uAccent,smoothstep(.10,.90,wash));
-        vec3 color=uBase*(.56+.46*checker)+tint*(.13+checker*.29)*(.38+pulse*.37)*edge*center;
-        float glare=exp(-abs(p.x-sin(uTime*.82+p.y*.14)*4.0)*.49)*smoothstep(-19.,5.,p.y);
-        color+=tint*glare*.16*edge*center;
+        vec3 tint=mix(vec3(.18,.71,.98),uAccent,smoothstep(.10,.90,wash));
+        float sweep=pow(.5+.5*sin(tile.y*.57 + abs(tile.x)*.49 - uTime*3.2),2.5);
+        vec3 color=uBase*(.56+.46*checker)+tint*(.11+checker*.29)*(.37+pulse*.38+sweep*.75)*edge*center;
+        for (int light=0; light<SPOTS; light++) {
+          vec2 offset=(vFloor.xz-uSpotTargets[light])*vec2(.71,1.);
+          float distanceSquared=dot(offset,offset);
+          float spot=1.-smoothstep(.22,5.3,distanceSquared);
+          float halo=1.-smoothstep(2.,17.,distanceSquared);
+          color+=uSpotColors[light]*(spot*.28+halo*.115)*(.69+.31*edge);
+        }
         float speckle=pow(noise(p*22.),7.);
         color*=.87+speckle*.32;
         color=mix(color,uBase*.56,smoothstep(25.,69.,length(vFloor-cameraPosition))*.67);
@@ -162,9 +208,8 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
   }));
   scene.add(floor);
 
-  const ballTime={value:0};
   const ballMaterial=new T.ShaderMaterial({
-    uniforms:{uAccent:{value:accent},uTime:ballTime},
+    uniforms:{uAccent:{value:accent},uTime:clock},
     vertexShader:`
       varying vec2 vUV; varying vec3 vNormal,vView;
       void main(){
@@ -188,24 +233,38 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
     return ball;
   });
 
-  const beamGeo=new T.ConeGeometry(2.3,31,24,1,true).rotateX(Math.PI/2).translate(0,0,15.5);
-  const beams=[-1,1,-1,1].map((side,index)=>{
-    const material=new T.ShaderMaterial({
-      uniforms:{uTint:{value:index%2===0 ? accent : cyan}},
-      side:T.DoubleSide,transparent:true,depthWrite:false,blending:T.AdditiveBlending,
-      vertexShader:`varying vec3 vBeam; varying vec2 vUV;
-        void main(){vBeam=position;vUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-      fragmentShader:`uniform vec3 uTint; varying vec3 vBeam; varying vec2 vUV;
-        void main(){
-          float width=.53+.47*pow(abs(cos(vUV.x*6.28318)),3.);
-          gl_FragColor=vec4(uTint,.083*width*(1.-smoothstep(3.,29.,vBeam.z)));
-        }`,
-    });
-    const beam=new T.Mesh(beamGeo,material);
-    beam.position.set(side*(8.65+index*.96),8.5-index*.85,-23.9+index*.9);
-    scene.add(beam);
-    return beam;
+  const beamGeo=new T.ConeGeometry(1,1,20,1,true).rotateX(-Math.PI/2).translate(0,0,.5);
+  const beamMaterial=new T.ShaderMaterial({
+    side:T.DoubleSide,transparent:true,depthWrite:false,blending:T.AdditiveBlending,
+    vertexShader:`varying vec3 vTint;
+      varying float vReach;
+      varying vec3 vView,vNormal;
+      void main(){
+        vTint=instanceColor;
+        vReach=position.z;
+        vec4 view=modelViewMatrix*instanceMatrix*vec4(position,1.);
+        vView=-view.xyz;
+        vNormal=normalMatrix*normalize(mat3(instanceMatrix)*vec3(normal.xy,0.));
+        gl_Position=projectionMatrix*view;
+      }`,
+    fragmentShader:`varying vec3 vTint;
+      varying float vReach;
+      varying vec3 vView,vNormal;
+      void main(){
+        float edge=abs(dot(normalize(vView),normalize(vNormal)));
+        float core=.36+.64*pow(edge,1.65);
+        float reach=smoothstep(0.,.09,vReach)*(1.-.51*vReach);
+        gl_FragColor=vec4(vTint,.108*reach*core);
+      }`,
   });
+  const beams = new T.InstancedMesh(beamGeo,beamMaterial,fixtures.length);
+  beams.instanceMatrix.setUsage(T.DynamicDrawUsage);
+  beams.frustumCulled=false;
+  fixtures.forEach(({ tint },i)=>beams.setColorAt(i,tint));
+  scene.add(beams);
+  const beamPose = new T.Object3D();
+  const beamAxis = new T.Vector3(0,0,1);
+  const beamDirection = new T.Vector3();
 
   const leds:Instance[]=[];
   for(let col=0;col<35;col++){
@@ -216,7 +275,7 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
   }
   const ledMaterial=new T.MeshBasicMaterial();
   ledMaterial.onBeforeCompile=(shader)=>{
-    shader.uniforms.uTime=floorTime;
+    shader.uniforms.uTime=clock;
     shader.vertexShader='varying vec2 vTile;\n'+shader.vertexShader.replace('#include <begin_vertex>',
       '#include <begin_vertex>\nvTile=instanceMatrix[3].xy;');
     shader.fragmentShader='uniform float uTime; varying vec2 vTile;\n'+shader.fragmentShader.replace('#include <color_fragment>',`
@@ -230,7 +289,7 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
   const dust=new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(
     Array.from({length:630},(_,i)=>i%3===0 ? (rand()-.5)*48 : i%3===1 ? .15+rand()*11 : -42+rand()*67),3));
   scene.add(new T.Points(dust,new T.ShaderMaterial({
-    uniforms:{uTime:floorTime,uAccent:{value:accent}},transparent:true,depthWrite:false,blending:T.AdditiveBlending,
+    uniforms:{uTime:clock,uAccent:{value:accent}},transparent:true,depthWrite:false,blending:T.AdditiveBlending,
     vertexShader:`uniform float uTime;varying float vAlpha;
       void main(){vec4 p=modelViewMatrix*vec4(position,1.);gl_Position=projectionMatrix*p;
         gl_PointSize=clamp(50./-p.z,1.,5.);
@@ -240,13 +299,53 @@ export const discoEighties: BuildScene = ({ scene,camera,accent,base }) => {
       void main(){float d=length(gl_PointCoord-.5);gl_FragColor=vec4(mix(uAccent,vec3(.7,1.,1.),.58),vAlpha*(1.-smoothstep(.09,.5,d)));}`,
   })));
 
+  const reflections = new T.BufferGeometry().setAttribute('position',new T.Float32BufferAttribute(
+    Array.from({length:780},(_,i)=>i%3===0 ? rand()*Math.PI*2 : i%3===1 ? 2.1+rand()*8.6 : rand()),3));
+  const glints = new T.Points(reflections,new T.ShaderMaterial({
+    uniforms:{uTime:clock,uAccent:{value:accent}},transparent:true,depthWrite:false,blending:T.AdditiveBlending,
+    vertexShader:`uniform float uTime; varying vec2 vGlint;
+      void main() {
+        float angle=position.x+uTime*.58;
+        vec2 ray=vec2(sin(angle),cos(angle));
+        float width=22.5/max(.01,abs(ray.x));
+        float back=21.9/max(.01,abs(ray.y));
+        vec2 hit=ray*min(width,back);
+        vec3 world=vec3(hit.x,position.y+sin(angle*2.+position.z*4.)*.8,hit.y-11.);
+        vec4 view=modelViewMatrix*vec4(world,1.);
+        gl_Position=projectionMatrix*view;
+        gl_PointSize=clamp((42.+position.z*95.)/-view.z,1.3,9.);
+        float pulse=.53+.47*sin(angle*2.3+position.z*29.);
+        vGlint=vec2(position.z,pulse*.88*smoothstep(-.1,.3,-ray.y));
+      }`,
+    fragmentShader:`uniform vec3 uAccent; varying vec2 vGlint;
+      void main(){
+        float r=length(gl_PointCoord-.5);
+        vec3 color=mix(vec3(.35,.84,1.),uAccent,smoothstep(.15,.88,vGlint.x));
+        gl_FragColor=vec4(color,(1.-smoothstep(.07,.5,r))*vGlint.y);
+      }`,
+  }));
+  glints.frustumCulled=false;
+  scene.add(glints);
+
   return {
     still:4.1,
     update(time) {
-      floorTime.value=ballTime.value=time;
-      balls.forEach((ball,i)=>ball.rotation.y=time*(.21+i*.08)+i);
-      beams.forEach((beam,i)=>beam.rotation.set(.17+Math.sin(time*.56+i)*.19,Math.sin(time*.59+i*1.7)*.65-(i%2===0 ? -.36 : .34),0));
-      camera.position.set(Math.sin(time*.13)*1.8,3.6+Math.sin(time*.18)*.38,22+Math.cos(time*.13)*.94);
+      clock.value=time;
+      balls.forEach((ball,i)=>ball.rotation.set(Math.sin(time*.38+i)*.14,time*(.78+i*.11)+i,0));
+      fixtures.forEach(({ origin,phase,reach },i)=>{
+        const target=spotTargets[i].set(Math.sin(time*1.16+phase)*reach,-9+Math.cos(time*.82+phase)*13);
+        beamDirection.set(target.x,0,target.y).sub(origin);
+        const length=beamDirection.length();
+        beamPose.position.copy(origin);
+        beamPose.scale.set(1.55,1.55,length);
+        beamPose.quaternion.setFromUnitVectors(beamAxis,beamDirection.normalize());
+        beamPose.updateMatrix();
+        beams.setMatrixAt(i,beamPose.matrix);
+      });
+      beams.instanceMatrix.needsUpdate=true;
+      pink.intensity=180+65*Math.sin(time*1.69);
+      blue.intensity=195+60*Math.cos(time*1.51);
+      camera.position.set(Math.sin(time*.29)*3.2,3.6+Math.sin(time*.32)*.49,22+Math.cos(time*.24)*1.43);
       camera.lookAt(0,5.25,-16);
     },
   };

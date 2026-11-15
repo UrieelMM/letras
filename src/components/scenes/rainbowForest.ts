@@ -1,5 +1,5 @@
 import * as T from 'three';
-import { rain } from './rain';
+import { forestRain } from './rain';
 import {
   fractal, instanced, lighting, noiseGLSL, randomGenerator, rockGeometry, skyDome, skyUniforms, terrain,
   type BuildScene, type Instance,
@@ -52,7 +52,7 @@ export const rainbowForest: BuildScene = ({ scene, camera, accent, base }) => {
   scene.fog = new T.FogExp2(accent.clone().lerp(base,.48),.025);
   lighting(scene,'#c4efd4','#63824d','#ffebad',2.2,[-10,11,-16],1.65);
   const skyTime = skyDome(scene, sky, accent, base);
-  const rainTime = rain(scene,color('#d7eadc'),1350);
+  const rainTime = forestRain(scene, color('#e4f5ff'));
 
   function ground(x: number,z: number) {
     const shore = T.MathUtils.smoothstep(Math.abs(x-streamCenter(z)),1.6,4.1);
@@ -93,11 +93,14 @@ export const rainbowForest: BuildScene = ({ scene, camera, accent, base }) => {
         float reflected=pow(1.-abs(ray.y),2.9);
         vec2 ref=vec2(ray.x,-ray.y+(wave-.5)*.05)/max(.32,-ray.z);
         vec3 color=mix(uBase*.63,uAccent*(.17+.28*noise(ref*vec2(16.,2.))),reflected);
-        vec2 i=floor(p*2.2),f=fract(p*2.2);
-        vec2 drop=vec2(hash(i+7.),hash(i+24.))*.70+.15;
-        float radius=fract(uTime*1.6+hash(i));
-        float ring=1.-smoothstep(.013,.038,abs(distance(f,drop)-radius*.52));
-        color+=uAccent*(ring*(1.-radius)*.21+pow(wave,4.)*.13);
+        vec2 i=floor(p*1.55),f=fract(p*1.55);
+        vec2 drop=vec2(hash(i+7.),hash(i+24.))*.46+.27;
+        float age=fract(uTime*1.95+hash(i));
+        float distanceToDrop=distance(f,drop);
+        float ring=1.-smoothstep(.014,.042,abs(distanceToDrop-age*.49));
+        float echo=1.-smoothstep(.011,.030,abs(distanceToDrop-max(0.,age-.16)*.45));
+        float splash=(1.-smoothstep(.024,.10,distanceToDrop))*(1.-smoothstep(.025,.17,age));
+        color+=uAccent*((ring+.33*echo)*pow(1.-age,1.4)*.38+splash*.49+pow(wave,4.)*.13);
         vec4 bow=rainbow(ref);
         color=mix(color,bow.rgb,bow.a*reflected*.36);
         gl_FragColor=vec4(color,1.);
