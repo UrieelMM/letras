@@ -1,10 +1,14 @@
 rules_version = '2';
 
-// Cada usuario sólo puede leer/escribir SUS propios datos.
+// Biblioteca común; los documentos anteriores se conservan para migración.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /libraries/shared/{document=**} {
+      allow read, write: if request.auth != null;
     }
 
     function folderIsOpen(folderId) {

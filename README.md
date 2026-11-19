@@ -19,7 +19,7 @@ derechos necesarios para las traducciones protegidas.
 La aplicación completa puede instalarse como PWA y usarse sin conexión. El
 cancionero, las ocho Biblias, los temas, fondos animados, imágenes internas y
 tipografías están empaquetados. Las canciones y ajustes del modo local se
-guardan en `localStorage`; las imágenes personalizadas se guardan en IndexedDB.
+guardan en `localStorage`; las imágenes del modo local se guardan en IndexedDB.
 Firebase es opcional y se usa solamente para cuentas y sincronización.
 
 ---
@@ -395,15 +395,32 @@ en el sistema operativo según lo que acepte la entrada HDMI del proyector.
 
 ## 10.5. Backend multiusuario (Firebase)
 
-La app es **multiusuario y SaaS-ready**: cada cuenta tiene su propia biblioteca,
-temas y configuración, totalmente aislados. La persistencia está detrás de una
+Todas las cuentas autenticadas usan **una misma biblioteca compartida**:
+letras, temas, listas, logo y configuración bíblica. Los cambios se reciben en
+tiempo real en los demás equipos conectados. La persistencia está detrás de una
 capa de repositorios (`src/persistence/`), con dos implementaciones
 intercambiables:
 
 - **localRepo** (localStorage): modo local, sin cuenta. Se usa automáticamente
   si no hay configuración de Firebase.
-- **firestoreRepo** (Cloud Firestore): modo multiusuario, datos por usuario en
-  `users/{uid}/songs|themes|setlists` y `users/{uid}/meta/settings`.
+- **firestoreRepo** (Cloud Firestore): datos comunes en
+  `libraries/shared/songs|themes|setlists` y `libraries/shared/meta/settings`.
+  Los listeners incluyen la configuración y reconstruyen las diapositivas
+  seleccionadas cuando otra cuenta corrige una letra. Cada operador conserva
+  su propia selección y controles de proyección.
+
+Al entrar con conexión, cada cuenta migra sus datos anteriores de `users/{uid}`
+una sola vez. Los originales se conservan. Si un ID ya está en la biblioteca
+común, se respeta esa copia, incluidas las eliminaciones. Las imágenes antiguas
+de IndexedDB se suben antes de compartir sus referencias; para recuperarlas es
+necesario abrir esa cuenta en el equipo donde se guardaron. Si falta un archivo
+o falla la migración, se avisa y se puede reintentar con **Actualizar**.
+
+Publica primero las reglas de `firestore.rules` y `storage.rules`, y después la
+app compilada. Sin las reglas nuevas, Firebase rechazará la biblioteca común.
+Las cuentas antiguas aportan sus datos al iniciar sesión en la app actualizada.
+Las versiones antiguas de la app siguen escribiendo en las rutas anteriores;
+cierra sus ventanas e instala la actualización antes de seguir editando.
 
 El usuario también puede pulsar **Usar sin conexión** en la pantalla de acceso.
 En ese modo no se requiere cuenta y todos los cambios quedan en el dispositivo.
@@ -414,8 +431,8 @@ Stack de Firebase usado:
 - **Cloud Firestore** para los datos (documentos JSON 1:1 con el modelo), con
   **caché offline persistente** y **sincronización en tiempo real** (listeners
   `onSnapshot`) — esto habilita, por ejemplo, control remoto desde el móvil.
-- **IndexedDB local** para logos e imágenes de fondo, de modo que sigan
-  disponibles aunque Firebase o Internet no respondan.
+- **IndexedDB local** para logos e imágenes de fondo del modo sin cuenta.
+  Con cuenta, las imágenes y logos nuevos se suben a la biblioteca común.
 - **Cloud Storage** para las imágenes y los videos de **Recursos**. Los archivos
   y sus fichas de Firestore están bajo `resources/{resourceId}`. Las carpetas
   se guardan en `resourceFolders/{folderId}`. Cualquier cuenta autenticada puede
@@ -459,9 +476,26 @@ requerir autorización manual. Mantén `VITE_FIREBASE_AUTH_DOMAIN` con el valor
 exacto del SDK de Firebase, normalmente `TU_PROYECTO.firebaseapp.com`; no lo
 cambies por el dominio de Vercel, Netlify u otro hosting externo.
 
-> Migrar de local a Firebase no toca la UI ni el store: sólo cambia el
-> repositorio activo. Los datos se siembran (temas + canciones de ejemplo) la
-> primera vez que entra una cuenta nueva.
+El botón **Actualizar** de la barra superior vuelve a consultar letras, temas,
+listas, configuración, recursos y carpetas directamente en el servidor. También
+busca y descarga una versión nueva de la PWA y recarga después de completar la
+instalación de sus archivos offline, incluidas las Biblias. No borra los datos
+locales. Sin conexión avisa y conserva la copia disponible; los listeners de
+Firestore retoman la sincronización al recuperar la red.
+
+Los presets de fábrica se combinan con los datos guardados sin reescribirlos al
+abrir una cuenta. Las bajas de letras se conservan explícitamente para evitar
+que una canción incluida vuelva a aparecer después de reiniciar.
+
+### Verificación local
+
+`npm test` comprueba referencias y búsquedas en las ocho Biblias, respuestas
+asíncronas obsoletas, persistencia de eliminaciones, migración y sincronización
+de repositorios/stores con un transporte de Firestore en memoria. Este doble
+no comprueba autenticación ni reglas del servidor. Antes de publicar, prueba con
+dos cuentas reales o con Firebase Emulator Suite las altas, cambios y bajas de
+letras/temas/recursos y la denegación de acceso sin sesión. `npm run build`
+comprueba TypeScript y genera el precache de producción.
 
 ---
 

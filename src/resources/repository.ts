@@ -13,6 +13,7 @@ const LOCAL_KEY = 'wordship.resources.v1';
 const FOLDERS_KEY = 'wordship.resource-folders.v1';
 
 export interface ResourceRepository {
+  refresh(): Promise<{ items: MediaResource[]; folders: ResourceFolder[] }>;
   subscribe(onChange: (items: MediaResource[]) => void, onError: (error: Error) => void): () => void;
   subscribeFolders(onChange: (folders: ResourceFolder[]) => void, onError: (error: Error) => void): () => void;
   createFolder(name: string): Promise<ResourceFolder>;
@@ -114,6 +115,7 @@ function createLocalRepository(): ResourceRepository {
   }
 
   return {
+    async refresh() { return { items: resources.read(), folders: folders.read() }; },
     subscribe: resources.subscribe,
     subscribeFolders: folders.subscribe,
     async createFolder(name) {
@@ -196,6 +198,13 @@ export function createResourceRepository(userId: string): ResourceRepository {
   }
 
   return {
+    async refresh() {
+      const [items, allFolders] = await Promise.all([getDocsFromServer(resources), getDocsFromServer(folders)]);
+      return {
+        items: items.docs.map((item) => ({ ...item.data(), id: item.id }) as MediaResource),
+        folders: allFolders.docs.map((item) => ({ ...item.data(), id: item.id }) as ResourceFolder),
+      };
+    },
     subscribe(onChange, onError) {
       return onSnapshot(resources, (snapshot) => {
         onChange(snapshot.docs.map((item) => ({ ...item.data(), id: item.id }) as MediaResource));

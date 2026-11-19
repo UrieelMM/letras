@@ -8,7 +8,7 @@ export type { Backup } from './types';
 
 /**
  * Store principal compuesto por slices independientes (patrón escalable):
- * - librarySlice: datos del usuario + persistencia local o en Firestore.
+ * - librarySlice: biblioteca compartida en Firestore o datos del modo local.
  * - presentationSlice: estado de proyección y selección.
  * - bibleSlice: navegación y pasajes bíblicos offline.
  * La autenticación vive en su propio store (./authStore).

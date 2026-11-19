@@ -1,5 +1,5 @@
-import type { AppSettings, Setlist, Song, Theme } from '../types';
-import type { DataRepo } from './repo';
+import type { AppSettings, Setlist, Theme } from '../types';
+import type { DataRepo, StoredSong } from './repo';
 import { LS_KEYS, lsGet, lsSet } from './storage';
 
 /** Repositorio basado en localStorage (modo local, un solo "usuario"). */
@@ -20,13 +20,13 @@ export function createLocalRepo(): DataRepo {
 
   return {
     async loadSongs() {
-      return lsGet<Song[]>(LS_KEYS.songs, []);
+      return lsGet<StoredSong[]>(LS_KEYS.songs, []);
     },
     async saveSong(song) {
       upsert(LS_KEYS.songs, song);
     },
     async deleteSong(id) {
-      remove<Song>(LS_KEYS.songs, id);
+      upsert(LS_KEYS.songs, { id, deleted: true });
     },
 
     async loadThemes() {

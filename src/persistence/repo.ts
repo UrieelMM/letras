@@ -1,20 +1,25 @@
 import type { AppSettings, Setlist, Song, Theme } from '../types';
 
+/** Las bajas se conservan para no restaurar letras incluidas al reiniciar. */
+export type StoredSong = Song | { id: string; deleted: true };
+
 /** Cambios recibidos en tiempo real desde el backend. */
 export interface RepoSnapshot {
-  songs?: Song[];
+  songs?: StoredSong[];
   themes?: Theme[];
   setlists?: Setlist[];
+  settings?: AppSettings | null;
 }
 
 /**
  * Interfaz de persistencia. Tiene dos implementaciones:
  * - localRepo: localStorage (modo local / sin cuenta).
- * - firestoreRepo: Cloud Firestore por usuario (modo multiusuario).
+ * - firestoreRepo: biblioteca común en Cloud Firestore (todas las cuentas).
  * Migrar entre backends no requiere tocar la UI ni el store.
  */
 export interface DataRepo {
-  loadSongs(): Promise<Song[]>;
+  prepare?(): Promise<void>;
+  loadSongs(): Promise<StoredSong[]>;
   saveSong(song: Song): Promise<void>;
   deleteSong(id: string): Promise<void>;
 
@@ -30,5 +35,6 @@ export interface DataRepo {
   saveSettings(settings: AppSettings): Promise<void>;
 
   /** Suscripción en tiempo real (opcional). Devuelve función para cancelar. */
-  subscribe?(onChange: (snap: RepoSnapshot) => void): () => void;
+  refresh?(): Promise<RepoSnapshot>;
+  subscribe?(onChange: (snap: RepoSnapshot) => void, onError: (error: Error) => void): () => void;
 }

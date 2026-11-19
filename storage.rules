@@ -6,7 +6,8 @@ service firebase.storage {
     match /resources/{resourceId} {
       allow get, delete: if request.auth != null;
       allow create: if request.auth != null && request.resource.size > 0 && (
-        (request.resource.contentType.matches('image/(jpeg|png|webp|gif|avif)') &&
+        ((request.resource.contentType.matches('image/(jpeg|png|webp|gif|avif)') ||
+          request.resource.contentType == 'image/svg+xml') &&
           request.resource.size <= 25 * 1024 * 1024) ||
         (request.resource.contentType.matches('video/(mp4|webm)') &&
           request.resource.size <= 250 * 1024 * 1024)

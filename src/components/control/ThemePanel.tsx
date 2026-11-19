@@ -15,7 +15,7 @@ import {
   KINETIC_THEME_IDS,
 } from '../../lib/kineticBackgrounds';
 import { isScenicBackgroundPreset, SCENIC_BACKGROUNDS, SCENIC_PRESETS, SCENIC_THEME_IDS } from '../../lib/scenicBackgrounds';
-import { saveThemeImageLocally } from '../../media/localMedia';
+import { saveLibraryImage } from '../../media/libraryMedia';
 import type {
   AnimatedBgPreset,
   BackgroundConfig,
@@ -198,6 +198,7 @@ function FavoriteStar() {
 }
 
 export function ThemePanel() {
+  const userId = useStore((s) => s.userId);
   const [themeSearch, setThemeSearch] = useState('');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -266,7 +267,8 @@ export function ThemePanel() {
     if (!file) return;
     setImageUploadProgress(0);
     try {
-      const url = await saveThemeImageLocally(file, setImageUploadProgress);
+      if (!userId) return;
+      const url = await saveLibraryImage(userId, file, 'theme', setImageUploadProgress);
       const uploadedTheme: Theme = {
         ...theme,
         background: { kind: 'image', url, fit: 'cover' },
@@ -274,7 +276,7 @@ export function ThemePanel() {
       customizeTheme(uploadedTheme);
       // Sin una canción activa, la personalización pertenece al tema seleccionado.
       if (workspaceTab === 'lyrics' && !activeSongId) saveTheme(uploadedTheme);
-      toast.success('Imagen guardada localmente en el tema.');
+      toast.success(userId === 'local' ? 'Imagen guardada en este dispositivo.' : 'Imagen compartida con todas las cuentas.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo subir la imagen.';
       toast.error(message);

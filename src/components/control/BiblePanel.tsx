@@ -40,6 +40,17 @@ export function BiblePanel() {
     void loadVersions();
   }, [loadVersions]);
 
+  useEffect(() => {
+    clearSearch();
+    setSearched(false);
+    if (searchDisabled || query.trim().length < 3) return;
+    const timeout = window.setTimeout(() => {
+      setSearched(true);
+      void searchBible(query);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [query, versionId, searchDisabled, searchBible, clearSearch]);
+
   async function chooseResult(result: BibleVerse) {
     await openChapter(result.book, result.chapter);
     setFrom(result.verse);
@@ -125,6 +136,7 @@ export function BiblePanel() {
           className="flex gap-2"
           onSubmit={(event) => {
             event.preventDefault();
+            if (query.trim().length < 3 || searchDisabled) return;
             setSearched(true);
             void searchBible(query);
           }}
@@ -133,21 +145,21 @@ export function BiblePanel() {
             type="search"
             className="input min-w-0"
             value={query}
-            placeholder="Buscar texto en toda la Biblia..."
-            aria-label="Buscar en la Biblia"
+            placeholder="Juan 1:5-10 o palabras…"
+            aria-label="Buscar pasaje o texto en la Biblia"
+            aria-describedby="bible-search-help"
             disabled={searchDisabled}
             onChange={(event) => {
               setQuery(event.target.value);
-              if (!event.target.value) {
-                setSearched(false);
-                clearSearch();
-              }
+              setSearched(false);
+              clearSearch();
             }}
           />
-          <button className="btn-soft !px-3" type="submit" disabled={searchDisabled || query.trim().length < 2 || searching}>
+          <button className="btn-soft !px-3" type="submit" disabled={searchDisabled || query.trim().length < 3 || searching}>
             {searching ? '…' : 'Buscar'}
           </button>
         </form>
+        <p id="bible-search-help" className="text-xs text-white/45">Resultados automáticos desde 3 caracteres. Ej.: Juan 1:5-10.</p>
 
         <div className="grid grid-cols-[1fr_86px] gap-2">
           <div>
@@ -207,7 +219,7 @@ export function BiblePanel() {
 
         {searching && (
           <div className="px-3 py-8 text-center text-xs text-white/40">
-            Preparando la búsqueda offline por primera vez…
+            Buscando pasajes…
           </div>
         )}
 
@@ -238,7 +250,7 @@ export function BiblePanel() {
                 >
                   <div className="text-[11px] font-semibold text-accent-soft">
                     {bibleBookName(item.book, version?.lang ?? 'es')} {item.chapter}:{item.verse}
-                    {item.verseEnd ? `–${item.verseEnd}` : ''}
+                    {item.verseEnd && item.verseEnd !== item.verse ? `–${item.verseEnd}` : ''}
                   </div>
                   <div className="mt-1 line-clamp-3 text-xs leading-relaxed text-white/55">{item.text}</div>
                 </button>

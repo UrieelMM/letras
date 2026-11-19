@@ -19,10 +19,11 @@ export interface Backup {
   settings: AppSettings;
 }
 
-/** Datos del usuario + persistencia local o sincronizada con Firestore. */
+/** Biblioteca común de las cuentas o biblioteca independiente del modo local. */
 export interface LibrarySlice {
   ready: boolean;
   userId: string | null;
+  syncError: string | null;
 
   songs: Song[];
   themes: Theme[];
@@ -30,6 +31,7 @@ export interface LibrarySlice {
   settings: AppSettings;
 
   init: (userId: string) => Promise<void>;
+  refreshLibrary: () => Promise<void>;
   reset: () => void;
 
   saveSong: (song: Song) => void;

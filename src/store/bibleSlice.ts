@@ -3,7 +3,10 @@ import { bibleRepo } from '../bible/bibleRepo';
 import { buildScriptureSlides } from '../bible/toSlides';
 import type { BibleSlice, SliceCreator } from './types';
 
-export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
+export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => {
+  let searchRequest = 0;
+  let chapterRequest = 0;
+  return ({
   bibleVersions: [],
   bibleVersionId: 'rv1909',
   bibleBook: 43,
@@ -35,8 +38,9 @@ export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
   },
 
   setBibleVersion: async (id) => {
+    searchRequest += 1;
     const version = get().bibleVersions.find((item) => item.id === id);
-    set({ bibleVersionId: id, bibleSearchResults: [], bibleError: null });
+    set({ bibleVersionId: id, bibleSearchResults: [], bibleSearching: false, bibleError: null });
     if (version?.available === false) {
       set({
         bibleChapterVerses: [],
@@ -48,6 +52,8 @@ export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
   },
 
   openBibleChapter: async (book, chapter) => {
+    const request = ++chapterRequest;
+    const versionId = get().bibleVersionId;
     set({
       bibleBook: book,
       bibleChapter: chapter,
@@ -55,9 +61,11 @@ export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
       bibleError: null,
     });
     try {
-      const verses = await bibleRepo.getChapter(get().bibleVersionId, book, chapter);
+      const verses = await bibleRepo.getChapter(versionId, book, chapter);
+      if (request !== chapterRequest || versionId !== get().bibleVersionId) return;
       set({ bibleChapterVerses: verses, bibleLoadingChapter: false });
     } catch (error) {
+      if (request !== chapterRequest || versionId !== get().bibleVersionId) return;
       set({
         bibleChapterVerses: [],
         bibleLoadingChapter: false,
@@ -68,15 +76,19 @@ export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
   },
 
   searchBible: async (query) => {
-    if (query.trim().length < 2) {
+    const request = ++searchRequest;
+    const versionId = get().bibleVersionId;
+    if (query.trim().length < 3) {
       set({ bibleSearchResults: [], bibleSearching: false });
       return;
     }
-    set({ bibleSearching: true, bibleError: null });
+    set({ bibleSearching: true, bibleSearchResults: [], bibleError: null });
     try {
-      const results = await bibleRepo.search(get().bibleVersionId, query);
+      const results = await bibleRepo.search(versionId, query);
+      if (request !== searchRequest || versionId !== get().bibleVersionId) return;
       set({ bibleSearchResults: results, bibleSearching: false });
     } catch (error) {
+      if (request !== searchRequest || versionId !== get().bibleVersionId) return;
       set({
         bibleSearching: false,
         bibleError:
@@ -85,7 +97,10 @@ export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
     }
   },
 
-  clearBibleSearch: () => set({ bibleSearchResults: [] }),
+  clearBibleSearch: () => {
+    searchRequest += 1;
+    set({ bibleSearchResults: [], bibleSearching: false, bibleError: null });
+  },
 
   projectBiblePassage: (from, to) => {
     const state = get();
@@ -111,4 +126,5 @@ export const createBibleSlice: SliceCreator<BibleSlice> = (set, get) => ({
     });
     get().goLive(0);
   },
-});
+  });
+};

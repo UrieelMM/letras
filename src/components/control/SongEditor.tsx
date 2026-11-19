@@ -20,28 +20,40 @@ export function SongEditor({ songId, onClose }: Props) {
   const songs = useStore((s) => s.songs);
   const saveSong = useStore((s) => s.saveSong);
   const original = songs.find((s) => s.id === songId);
+  const [baseline, setBaseline] = useState<Song | null>(original ?? null);
   const [draft, setDraft] = useState<Song | null>(original ?? null);
   const [tagsText, setTagsText] = useState(original?.tags.join(', ') ?? '');
   const [editorTab, setEditorTab] = useState<'lyrics' | 'backgrounds'>('lyrics');
   const [typographyBlockId, setTypographyBlockId] = useState<string | null>(null);
   const [selection, setSelection] = useState<(LyricEmphasis & { blockId: string }) | null>(null);
   const theme = useStore((s) => s.themeForSong(draft));
+  const localChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
+    || tagsText !== (baseline?.tags.join(', ') ?? '');
+  const remoteChanges = Boolean(original && baseline && JSON.stringify(original) !== JSON.stringify(baseline));
+
+  function loadSharedVersion() {
+    if (!original) return;
+    setBaseline(original);
+    setDraft(original);
+    setTagsText(original.tags.join(', '));
+    setTypographyBlockId(null);
+    setSelection(null);
+  }
 
   useEffect(() => {
     setDraft(original ? { ...original } : null);
+    setBaseline(original ?? null);
     setTagsText(original?.tags.join(', ') ?? '');
     setTypographyBlockId(null);
     setSelection(null);
     setEditorTab('lyrics');
   }, [songId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Si la canción llega después (carga async / Firestore), rellena el borrador.
+  // Un editor sin cambios sigue las correcciones de las demás cuentas. Un
+  // borrador en curso se conserva hasta que el operador cargue la nueva copia.
   useEffect(() => {
-    if (!draft && original) {
-      setDraft({ ...original });
-      setTagsText(original.tags.join(', '));
-    }
-  }, [draft, original]);
+    if (original && (!draft || !localChanges && remoteChanges)) loadSharedVersion();
+  }, [original, draft, localChanges, remoteChanges]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!draft) return null;
 
@@ -102,6 +114,10 @@ export function SongEditor({ songId, onClose }: Props) {
 
   function handleSave() {
     if (!draft) return;
+    if (remoteChanges) {
+      toast.error('Otra cuenta actualizó esta canción. Carga la versión compartida antes de guardar.');
+      return;
+    }
     if (!draft.title.trim()) {
       toast.error('Ponle un título a la canción.');
       return;
@@ -124,6 +140,13 @@ export function SongEditor({ songId, onClose }: Props) {
             ✕
           </button>
         </div>
+
+        {remoteChanges && localChanges && (
+          <div role="status" className="flex items-center justify-between gap-3 border-b border-amber-300/20 bg-amber-300/10 px-5 py-3 text-sm text-amber-100">
+            <p>Otra cuenta actualizó esta canción. Carga sus cambios antes de seguir editando.</p>
+            <button className="btn-soft shrink-0" onClick={loadSharedVersion}>Cargar versión compartida</button>
+          </div>
+        )}
 
         <nav aria-label="Opciones de edición de canción" className="flex gap-1 border-b border-white/10 px-5 py-2">
           {([['lyrics', 'Letra'], ['backgrounds', 'Fondos']] as const).map(([id, label]) => (

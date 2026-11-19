@@ -92,10 +92,14 @@ El importador:
 - Navegación por libro, capítulo y versículo.
 - Selección de un versículo o rango.
 - Soporte de rangos editoriales combinados.
-- Búsqueda global local en la versión activa.
+- Búsqueda automática desde 3 caracteres, con una pausa de 250 ms al escribir.
+- Citas por nombre o abreviatura: `Juan 1:5-10`, `Jn. 3:16`, `1 Juan 2:3`,
+  `Génesis 1:1` o `John 1:5–10`. Los prefijos como `Jua` muestran resultados.
+- Al elegir un rango, se abre su capítulo y se selecciona el pasaje completo.
+- Búsqueda global por palabras en la versión activa cuando no es una cita.
 - Conversión a `RenderSlide[]` y proyección con `SlideStage`.
 - Referencia y atribución editorial en pantalla.
-- Caché en memoria e IndexedDB.
+- Caché en memoria e IndexedDB por compilación para evitar textos obsoletos.
 - Disponibilidad offline mediante el precache de la PWA.
 
 Quedan como mejoras futuras los marcadores, un índice de búsqueda dedicado y la

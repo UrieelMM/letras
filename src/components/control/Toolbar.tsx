@@ -12,9 +12,10 @@ import {
 } from '../../sync/screens';
 import { createChannel } from '../../sync/channel';
 import type { OutputStatus } from '../../types';
-import { saveBrandLogoLocally } from '../../media/localMedia';
+import { saveLibraryImage } from '../../media/libraryMedia';
 import appLogo from '../../assets/3.png';
 import { InstallAppButton } from '../InstallAppButton';
+import { UpdateAppButton } from '../UpdateAppButton';
 
 export function Toolbar() {
   const live = useStore((s) => s.live);
@@ -24,6 +25,8 @@ export function Toolbar() {
   const exportData = useStore((s) => s.exportData);
   const importData = useStore((s) => s.importData);
   const updateSettings = useStore((s) => s.updateSettings);
+  const userId = useStore((s) => s.userId);
+  const syncError = useStore((s) => s.syncError);
   const user = useAuthStore((s) => s.user);
   const localMode = useAuthStore((s) => s.localMode);
   const authConfigured = useAuthStore((s) => s.configured);
@@ -167,9 +170,10 @@ export function Toolbar() {
     if (!file) return;
     setLogoUploadProgress(0);
     try {
-      const logoUrl = await saveBrandLogoLocally(file, setLogoUploadProgress);
+      if (!userId) return;
+      const logoUrl = await saveLibraryImage(userId, file, 'logo', setLogoUploadProgress);
       updateSettings({ logoUrl });
-      toast.success('Logo guardado localmente para la proyección.');
+      toast.success(userId === 'local' ? 'Logo guardado en este dispositivo.' : 'Logo compartido con todas las cuentas.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo subir el logo.';
       toast.error(message);
@@ -266,6 +270,8 @@ export function Toolbar() {
         />
 
         <InstallAppButton />
+        <UpdateAppButton />
+        {syncError && <span role="status" title={syncError} className="text-xs text-amber-300">Sincronización pendiente</span>}
 
         <button
           className="btn-accent"

@@ -32,7 +32,7 @@ export interface MediaResource {
   createdAt: number;
 }
 
-export const RESOURCE_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/webm';
+export const RESOURCE_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,image/svg+xml,video/mp4,video/webm';
 export const RESOURCE_SIZE_LIMITS = { image: 25, video: 250 } as const;
 export const RESOURCE_KIND_LABELS = { image: 'Imagen', video: 'Video' } as const;
 
@@ -47,7 +47,7 @@ export function formatResourceSize(bytes: number) {
 export function validateResource(file: File) {
   const mimeType = file.type;
   if (!RESOURCE_ACCEPT.split(',').includes(mimeType)) {
-    throw new Error('Selecciona una imagen JPG, PNG, WebP, GIF o AVIF, o un video MP4 o WebM.');
+    throw new Error('Selecciona una imagen JPG, PNG, WebP, GIF, AVIF o SVG, o un video MP4 o WebM.');
   }
   const kind = mimeType.startsWith('video/') ? 'video' : 'image';
   const limit = RESOURCE_SIZE_LIMITS[kind];

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { compareResources, type MediaResource, type ResourceFolder } from './model';
 import { createResourceRepository, type ResourceRepository } from './repository';
 import { useStore } from '../store/useStore';
@@ -10,9 +10,10 @@ interface ResourceLibrary {
   loading: boolean;
   error: string | null;
   local: boolean;
+  refresh: () => Promise<void>;
 }
 
-const LibraryContext = createContext<ResourceLibrary>({ items: [], folders: [], repo: null, loading: false, error: null, local: false });
+const LibraryContext = createContext<ResourceLibrary>({ items: [], folders: [], repo: null, loading: false, error: null, local: false, refresh: async () => {} });
 
 export function ResourceLibraryProvider({ userId, children }: { userId: string | null; children: ReactNode }) {
   const repo = useMemo(() => userId ? createResourceRepository(userId) : null, [userId]);
@@ -20,6 +21,16 @@ export function ResourceLibraryProvider({ userId, children }: { userId: string |
   const [folders, setFolders] = useState<ResourceFolder[]>([]);
   const [itemsStatus, setItemsStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [foldersStatus, setFoldersStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+  const refresh = useCallback(async () => {
+    if (!repo) return;
+    const snapshot = await repo.refresh();
+    setItems(snapshot.items.sort(compareResources));
+    setFolders(snapshot.folders.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })));
+    setItemsStatus('ready');
+    setFoldersStatus('ready');
+    setAttempt((value) => value + 1);
+  }, [repo]);
 
   useEffect(() => {
     if (!repo) return;
@@ -47,15 +58,15 @@ export function ResourceLibraryProvider({ userId, children }: { userId: string |
       unsubscribeItems();
       unsubscribeFolders();
     };
-  }, [repo]);
+  }, [repo, attempt]);
 
   const loading = Boolean(repo) && (itemsStatus === 'loading' || foldersStatus === 'loading');
   const error = itemsStatus === 'error' || foldersStatus === 'error'
-    ? 'No se pudo cargar toda la biblioteca de recursos. Vuelve a abrir la aplicación para reintentar.'
+    ? 'No se pudo cargar toda la biblioteca de recursos. Pulsa Actualizar para reintentar.'
     : null;
 
   return (
-    <LibraryContext.Provider value={{ items, folders, repo, loading, error, local: userId === 'local' }}>
+    <LibraryContext.Provider value={{ items, folders, repo, loading, error, local: userId === 'local', refresh }}>
       {children}
     </LibraryContext.Provider>
   );

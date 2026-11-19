@@ -1,5 +1,6 @@
 import { BIBLE_BOOKS } from './books';
 import type { BibleBookData, BibleRepo, BibleVerse, BibleVersion } from './types';
+import { normalizeBibleText, parseBibleReference } from './reference';
 
 export const BUNDLED_BIBLE_VERSIONS: BibleVersion[] = [
   {
@@ -80,7 +81,8 @@ const memory = new Map<string, BibleBookData>();
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 
 function cacheKey(versionId: string, book: number) {
-  return `${versionId}:${book}`;
+  // Una compilación nueva nunca reutiliza textos de una versión anterior.
+  return `${__APP_BUILD_ID__}:${versionId}:${book}`;
 }
 
 function openCache(): Promise<IDBDatabase | null> {
@@ -93,7 +95,17 @@ function openCache(): Promise<IDBDatabase | null> {
         request.result.createObjectStore('books');
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      const cursor = db.transaction('books', 'readwrite').objectStore('books').openCursor();
+      cursor.onsuccess = () => {
+        const item = cursor.result;
+        if (!item) return;
+        if (!String(item.key).startsWith(`${__APP_BUILD_ID__}:`)) item.delete();
+        item.continue();
+      };
+      resolve(db);
+    };
     request.onerror = () => resolve(null);
   });
   return dbPromise;
@@ -142,13 +154,6 @@ async function loadBook(versionId: string, book: number): Promise<BibleBookData>
   return data;
 }
 
-function normalize(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase();
-}
-
 export const bundledBibleRepo: BibleRepo = {
   async listVersions() {
     return BUNDLED_BIBLE_VERSIONS;
@@ -166,14 +171,29 @@ export const bundledBibleRepo: BibleRepo = {
   },
 
   async search(versionId, query) {
-    const needle = normalize(query.trim());
-    if (needle.length < 2) return [];
-    const books = await Promise.all(BIBLE_BOOKS.map((item) => loadBook(versionId, item.number)));
+    const needle = normalizeBibleText(query.trim());
+    if (needle.length < 3) return [];
+    const reference = parseBibleReference(query);
+    const selectedBooks = reference?.books ?? BIBLE_BOOKS;
     const matches: BibleVerse[] = [];
-    for (const data of books) {
+    for (const book of selectedBooks) {
+      const data = await loadBook(versionId, book.number);
       for (const chapter of data.chapters) {
+        if (reference?.chapter !== undefined && chapter.chapter !== reference.chapter) continue;
+        if (reference?.from !== undefined) {
+          const selected = chapter.verses.filter((verse) => verse.verse <= reference.to!
+            && (verse.verseEnd ?? verse.verse) >= reference.from!);
+          if (!selected.length || !selected.some((verse) => verse.verse <= reference.from! && (verse.verseEnd ?? verse.verse) >= reference.from!)
+            || !selected.some((verse) => verse.verse <= reference.to! && (verse.verseEnd ?? verse.verse) >= reference.to!)) continue;
+          matches.push({
+            book: data.book, chapter: chapter.chapter, verse: selected[0].verse,
+            verseEnd: selected[selected.length - 1].verseEnd ?? selected[selected.length - 1].verse,
+            text: selected.map((verse) => verse.text).join(' '),
+          });
+          continue;
+        }
         for (const verse of chapter.verses) {
-          if (normalize(verse.text).includes(needle)) {
+          if (reference || normalizeBibleText(verse.text).includes(needle)) {
             matches.push({
               book: data.book,
               chapter: chapter.chapter,
